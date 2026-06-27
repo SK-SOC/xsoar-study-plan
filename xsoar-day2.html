@@ -1,0 +1,1174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>XSOAR Day 2 — Incidents, Indicators & Marketplace</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#06090f;--surface:#0d1422;--surface2:#111b30;
+  --border:#1a2540;--border2:#243050;
+  --orange:#ff6230;--orange-dim:rgba(255,98,48,0.12);--orange-border:rgba(255,98,48,0.3);
+  --blue:#3a8dde;--blue-dim:rgba(58,141,222,0.12);
+  --green:#27c47a;--green-dim:rgba(39,196,122,0.12);
+  --purple:#8b5cf6;--amber:#ffb347;--red:#ef4444;
+  --text:#c8d6f0;--muted:#4a6080;--white:#f0f4ff;
+  --mono:'JetBrains Mono',monospace;
+}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-size:14px;line-height:1.7;min-height:100vh;display:flex;flex-direction:column}
+
+/* TOPBAR */
+.topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:0 32px;display:flex;align-items:center;gap:16px;height:52px;position:sticky;top:0;z-index:100}
+.topbar-brand{font-family:var(--mono);font-size:11px;color:var(--orange);font-weight:600;letter-spacing:.08em;white-space:nowrap}
+.topbar-sep{width:1px;height:20px;background:var(--border)}
+.topbar-title{font-size:13px;font-weight:600;color:var(--white);flex:1}
+.progress-wrap{display:flex;align-items:center;gap:10px;margin-left:auto}
+.progress-label{font-family:var(--mono);font-size:10px;color:var(--muted);white-space:nowrap}
+.progress-track{width:120px;height:4px;background:var(--border);border-radius:2px;overflow:hidden}
+.progress-fill{height:100%;background:var(--orange);border-radius:2px;transition:width .4s ease}
+.lesson-count{font-family:var(--mono);font-size:10px;color:var(--muted);white-space:nowrap}
+
+/* LAYOUT */
+.layout{display:flex;flex:1;min-height:0}
+
+/* SIDEBAR */
+.sidebar{width:220px;flex-shrink:0;background:var(--surface);border-right:1px solid var(--border);padding:20px 0;position:sticky;top:52px;height:calc(100vh - 52px);overflow-y:auto;display:flex;flex-direction:column}
+.sidebar-label{font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);padding:8px 24px 4px}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 16px;cursor:pointer;transition:background .15s;border:none;background:none;width:100%;text-align:left}
+.nav-item:hover{background:rgba(255,255,255,.04)}
+.nav-item.active{background:var(--orange-dim);border-left:2px solid var(--orange)}
+.nav-icon{width:22px;height:22px;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0}
+.ni-orange{background:var(--orange-dim);color:var(--orange)}
+.ni-blue{background:var(--blue-dim);color:var(--blue)}
+.ni-green{background:var(--green-dim);color:var(--green)}
+.ni-purple{background:rgba(139,92,246,.12);color:var(--purple)}
+.ni-amber{background:rgba(255,179,71,.12);color:var(--amber)}
+.nav-text{font-size:12px;color:var(--text);font-weight:500;line-height:1.3}
+.nav-item.active .nav-text{color:var(--white)}
+.nav-dot{width:6px;height:6px;border-radius:50%;background:var(--border);margin-left:auto;flex-shrink:0;transition:background .2s}
+.nav-item.active .nav-dot{background:var(--orange)}
+.nav-item.done .nav-dot{background:var(--green)}
+.sidebar-footer{padding:16px;border-top:1px solid var(--border);margin-top:auto}
+
+/* MAIN */
+.main{flex:1;overflow-y:auto;padding:40px 48px;max-width:820px}
+.lesson-panel{display:none}
+.lesson-panel.active{display:block;animation:fadeIn .25s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+
+/* LESSON HERO */
+.lesson-hero{margin-bottom:32px}
+.lesson-eyebrow{display:flex;align-items:center;gap:8px;margin-bottom:12px}
+.eyebrow-tag{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.1em;padding:3px 10px;border-radius:2px}
+.et-orange{background:var(--orange-dim);color:var(--orange);border:1px solid var(--orange-border)}
+.et-blue{background:var(--blue-dim);color:var(--blue);border:1px solid rgba(58,141,222,.3)}
+.et-green{background:var(--green-dim);color:var(--green);border:1px solid rgba(39,196,122,.3)}
+.et-purple{background:rgba(139,92,246,.12);color:var(--purple);border:1px solid rgba(139,92,246,.3)}
+.et-amber{background:rgba(255,179,71,.12);color:var(--amber);border:1px solid rgba(255,179,71,.3)}
+.lesson-num{font-family:var(--mono);font-size:10px;color:var(--muted)}
+.lesson-title{font-size:26px;font-weight:800;color:var(--white);letter-spacing:-.02em;line-height:1.2;margin-bottom:8px}
+.lesson-subtitle{font-size:14px;color:var(--muted);max-width:520px}
+
+/* OBJ BOX */
+.obj-box{background:var(--surface2);border:1px solid var(--border);border-left:3px solid var(--orange);border-radius:0 6px 6px 0;padding:14px 18px;margin-bottom:28px}
+.obj-label{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--orange);margin-bottom:8px}
+.obj-list{list-style:none}
+.obj-list li{font-size:13px;color:var(--text);padding:3px 0;display:flex;gap:8px;align-items:flex-start}
+.obj-list li::before{content:'→';color:var(--orange);flex-shrink:0;margin-top:1px}
+
+/* CONTENT */
+.content-h2{font-size:17px;font-weight:700;color:var(--white);margin:28px 0 12px;padding-bottom:8px;border-bottom:1px solid var(--border)}
+.content-h3{font-size:14px;font-weight:600;color:var(--white);margin:20px 0 8px}
+.content-p{font-size:14px;color:var(--text);margin-bottom:14px;line-height:1.75}
+
+/* INCIDENT ANATOMY */
+.incident-card{background:var(--surface2);border:1px solid var(--border);border-radius:8px;overflow:hidden;margin:16px 0}
+.inc-header{background:rgba(255,98,48,.07);border-bottom:1px solid var(--border);padding:12px 16px;display:flex;align-items:center;justify-content:space-between}
+.inc-id{font-family:var(--mono);font-size:11px;color:var(--orange);font-weight:600}
+.inc-status{font-family:var(--mono);font-size:10px;padding:3px 10px;border-radius:10px}
+.status-active{background:var(--blue-dim);color:var(--blue);border:1px solid rgba(58,141,222,.3)}
+.status-new{background:var(--orange-dim);color:var(--orange);border:1px solid var(--orange-border)}
+.status-closed{background:var(--green-dim);color:var(--green);border:1px solid rgba(39,196,122,.3)}
+.status-pending{background:rgba(255,179,71,.12);color:var(--amber);border:1px solid rgba(255,179,71,.3)}
+.inc-body{display:grid;grid-template-columns:1fr 1fr;gap:0}
+.inc-field{padding:10px 16px;border-bottom:1px solid rgba(255,255,255,.04);border-right:1px solid rgba(255,255,255,.04)}
+.inc-field:nth-child(even){border-right:none}
+.inc-field-label{font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:4px}
+.inc-field-value{font-size:13px;color:var(--white);font-weight:500}
+.inc-field-value.sev-critical{color:#ef4444}
+.inc-field-value.sev-high{color:#f97316}
+.inc-field-value.sev-medium{color:var(--amber)}
+.inc-field-value.sev-low{color:var(--blue)}
+
+/* LIFECYCLE */
+.lifecycle{display:flex;align-items:center;gap:0;margin:16px 0;overflow-x:auto;padding:4px 0}
+.lc-step{display:flex;flex-direction:column;align-items:center;gap:6px;min-width:80px}
+.lc-circle{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;border:2px solid}
+.lc-label{font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:.06em;text-align:center;line-height:1.3}
+.lc-arrow{color:var(--muted);font-size:18px;margin:0 4px;padding-bottom:20px}
+.lc-new{border-color:var(--orange);background:var(--orange-dim);color:var(--orange)}
+.lc-active{border-color:var(--blue);background:var(--blue-dim);color:var(--blue)}
+.lc-progress{border-color:var(--purple);background:rgba(139,92,246,.12);color:var(--purple)}
+.lc-pending{border-color:var(--amber);background:rgba(255,179,71,.12);color:var(--amber)}
+.lc-closed{border-color:var(--green);background:var(--green-dim);color:var(--green)}
+.lc-label-new{color:var(--orange)}
+.lc-label-active{color:var(--blue)}
+.lc-label-progress{color:var(--purple)}
+.lc-label-pending{color:var(--amber)}
+.lc-label-closed{color:var(--green)}
+
+/* SEVERITY TABLE */
+.sev-table{width:100%;border-collapse:collapse;margin:12px 0}
+.sev-table th{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);padding:8px 12px;text-align:left;border-bottom:2px solid var(--border)}
+.sev-table td{padding:10px 12px;border-bottom:1px solid rgba(255,255,255,.04);font-size:13px}
+.sev-table tr:last-child td{border-bottom:none}
+.sev-table tbody tr:hover td{background:rgba(255,255,255,.02)}
+.sev-pill{display:inline-block;font-family:var(--mono);font-size:10px;font-weight:600;padding:3px 10px;border-radius:10px}
+.sp-unknown{background:rgba(74,96,128,.2);color:var(--muted);border:1px solid var(--border)}
+.sp-info{background:rgba(255,255,255,.07);color:#94a3b8;border:1px solid rgba(148,163,184,.3)}
+.sp-low{background:var(--blue-dim);color:var(--blue);border:1px solid rgba(58,141,222,.3)}
+.sp-medium{background:rgba(255,179,71,.12);color:var(--amber);border:1px solid rgba(255,179,71,.3)}
+.sp-high{background:rgba(249,115,22,.12);color:#f97316;border:1px solid rgba(249,115,22,.3)}
+.sp-critical{background:rgba(239,68,68,.12);color:#ef4444;border:1px solid rgba(239,68,68,.3)}
+
+/* DBOT SCORE */
+.dbot-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:14px 0}
+.dbot-card{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:16px;text-align:center}
+.dbot-score{font-family:var(--mono);font-size:32px;font-weight:700;margin-bottom:6px}
+.dbot-label{font-size:11px;font-weight:600;margin-bottom:6px}
+.dbot-desc{font-size:11px;color:var(--muted);line-height:1.5}
+.db-unknown{color:var(--muted)}
+.db-good{color:var(--green)}
+.db-suspicious{color:var(--amber)}
+.db-malicious{color:#ef4444}
+
+/* IOC TYPES */
+.ioc-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:14px 0}
+.ioc-card{background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:12px}
+.ioc-icon{font-size:18px;margin-bottom:6px}
+.ioc-name{font-size:12px;font-weight:600;color:var(--white);margin-bottom:4px}
+.ioc-example{font-family:var(--mono);font-size:10px;color:var(--muted)}
+
+/* MARKETPLACE */
+.mkt-card{background:var(--surface2);border:1px solid var(--border);border-radius:8px;overflow:hidden;margin:14px 0}
+.mkt-top{display:flex;align-items:flex-start;gap:14px;padding:16px;border-bottom:1px solid var(--border)}
+.mkt-logo{width:44px;height:44px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;background:var(--surface);border:1px solid var(--border)}
+.mkt-info{flex:1}
+.mkt-name{font-size:14px;font-weight:700;color:var(--white);margin-bottom:3px}
+.mkt-author{font-size:11px;color:var(--muted);margin-bottom:6px}
+.mkt-tags{display:flex;gap:6px;flex-wrap:wrap}
+.mkt-tag{font-family:var(--mono);font-size:9px;padding:2px 7px;border-radius:2px;background:var(--surface);border:1px solid var(--border);color:var(--muted)}
+.mkt-install{padding:6px 16px;background:var(--orange);color:#fff;border:none;border-radius:4px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;transition:background .15s}
+.mkt-install:hover{background:#e5572a}
+.mkt-install.installed{background:var(--green-dim);color:var(--green);border:1px solid rgba(39,196,122,.3)}
+.mkt-body{padding:14px 16px}
+.mkt-desc{font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.6}
+.cmd-list{list-style:none}
+.cmd-item{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.03);font-family:var(--mono);font-size:11px}
+.cmd-item:last-child{border-bottom:none}
+.cmd-name{color:var(--orange)}
+.cmd-desc{color:var(--muted)}
+
+/* CODE BLOCK */
+.code-block{background:#050810;border:1px solid var(--border);border-radius:6px;overflow:hidden;margin:14px 0}
+.code-header{background:var(--surface);padding:8px 14px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border)}
+.code-lang{font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+.code-body{padding:16px;font-family:var(--mono);font-size:12px;line-height:1.9;color:#8eb4e3;overflow-x:auto;white-space:pre}
+.code-body .co{color:var(--muted)}
+.code-body .kw{color:var(--orange)}
+.code-body .st{color:var(--green)}
+.code-body .val{color:var(--amber)}
+.code-body .cm{color:#3a5070;font-style:italic}
+
+/* CALLOUT */
+.callout{border-radius:6px;padding:14px 16px;margin:16px 0;display:flex;gap:12px;align-items:flex-start}
+.callout-icon{font-size:16px;flex-shrink:0;margin-top:1px}
+.callout-text{font-size:13px;line-height:1.65}
+.callout-text strong{display:block;margin-bottom:4px;color:var(--white)}
+.cl-orange{background:rgba(255,98,48,.07);border:1px solid var(--orange-border)}
+.cl-blue{background:var(--blue-dim);border:1px solid rgba(58,141,222,.25)}
+.cl-green{background:var(--green-dim);border:1px solid rgba(39,196,122,.25)}
+
+/* TERM TABLE */
+.term-table{width:100%;border-collapse:collapse;margin-bottom:20px}
+.term-table th{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);padding:8px 12px;text-align:left;border-bottom:2px solid var(--border)}
+.term-table td{padding:11px 12px;border-bottom:1px solid rgba(255,255,255,.04);font-size:13px;vertical-align:top}
+.term-table tr:last-child td{border-bottom:none}
+.term-table td:first-child{font-family:var(--mono);font-weight:600;color:var(--orange);white-space:nowrap}
+.term-table tbody tr:hover td{background:rgba(255,255,255,.02)}
+
+/* QUIZ */
+.quiz-q{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:20px;margin-bottom:16px}
+.quiz-num{font-family:var(--mono);font-size:10px;color:var(--muted);margin-bottom:8px}
+.quiz-question{font-size:14px;font-weight:600;color:var(--white);margin-bottom:16px;line-height:1.5}
+.quiz-options{display:flex;flex-direction:column;gap:8px}
+.quiz-opt{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:10px 14px;cursor:pointer;font-size:13px;color:var(--text);transition:all .15s;text-align:left;width:100%}
+.quiz-opt:hover{border-color:var(--border2);background:var(--surface2)}
+.quiz-opt.correct{border-color:rgba(39,196,122,.5);background:rgba(39,196,122,.1);color:var(--green)}
+.quiz-opt.wrong{border-color:rgba(239,68,68,.4);background:rgba(239,68,68,.08);color:#ef4444}
+.quiz-feedback{margin-top:12px;padding:10px 14px;border-radius:6px;font-size:12px;display:none;line-height:1.6}
+.qf-correct{background:var(--green-dim);border:1px solid rgba(39,196,122,.3);color:var(--green)}
+.qf-wrong{background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.3);color:#ef8888}
+.quiz-score{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:24px;text-align:center;display:none;margin-top:16px}
+.score-num{font-size:48px;font-weight:800;color:var(--orange);font-family:var(--mono);margin-bottom:4px}
+.score-label{font-size:13px;color:var(--muted);margin-bottom:12px}
+.score-msg{font-size:14px;color:var(--text)}
+
+/* LAB */
+.lab-card{background:var(--surface2);border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:16px}
+.lab-header{background:rgba(255,98,48,.06);border-bottom:1px solid var(--border);padding:14px 18px;display:flex;align-items:center;gap:10px}
+.lab-title{font-size:14px;font-weight:600;color:var(--white)}
+.lab-badge{font-family:var(--mono);font-size:10px;background:var(--orange-dim);color:var(--orange);border:1px solid var(--orange-border);padding:2px 8px;border-radius:2px;margin-left:auto}
+.lab-body{padding:16px 18px}
+.check-item{display:flex;align-items:flex-start;gap:12px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.04);cursor:pointer}
+.check-item:last-child{border-bottom:none}
+.check-item:hover .check-box{border-color:var(--orange)}
+.check-box{width:18px;height:18px;border:1.5px solid var(--border2);border-radius:3px;flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:all .15s;margin-top:1px}
+.check-item.checked .check-box{background:var(--orange);border-color:var(--orange)}
+.check-tick{color:var(--bg);font-size:11px;display:none;font-weight:700}
+.check-item.checked .check-tick{display:block}
+.check-item.checked .check-label{color:var(--muted)}
+.check-label strong{display:block;color:var(--white);margin-bottom:2px;font-weight:600}
+.check-label small{display:block;color:var(--muted);font-size:11px;margin-top:2px}
+.check-item.checked .check-label strong{color:var(--muted);text-decoration:line-through}
+
+/* GLOSSARY */
+.glossary-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+.gloss-item{background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:12px}
+.gloss-term{font-family:var(--mono);font-size:11px;color:var(--orange);font-weight:600;margin-bottom:4px}
+.gloss-def{font-size:12px;color:var(--muted);line-height:1.5}
+
+/* NAV BUTTONS */
+.lesson-nav{display:flex;justify-content:space-between;align-items:center;margin-top:40px;padding-top:24px;border-top:1px solid var(--border)}
+.nav-btn{display:flex;align-items:center;gap:8px;padding:10px 20px;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:13px;font-weight:500;cursor:pointer;transition:all .15s}
+.nav-btn:hover{border-color:var(--border2);color:var(--white)}
+.nav-btn.primary{background:var(--orange);border-color:var(--orange);color:#fff}
+.nav-btn.primary:hover{background:#e5572a}
+.nav-btn:disabled{opacity:.3;cursor:not-allowed}
+
+/* KEY POINT */
+.key-point{background:var(--surface2);border:1px solid var(--border2);border-radius:6px;padding:14px 16px;margin:14px 0;display:flex;gap:12px}
+.kp-icon{font-size:18px;flex-shrink:0}
+.kp-text{font-size:13px;color:var(--text);line-height:1.65}
+
+/* DAY RECAP */
+.day-recap{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:20px;margin-bottom:20px}
+.recap-label{font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin-bottom:10px}
+.recap-row{display:flex;gap:8px;align-items:flex-start;padding:5px 0}
+.recap-dot{width:6px;height:6px;border-radius:50%;background:var(--green);margin-top:7px;flex-shrink:0}
+.recap-text{font-size:13px;color:var(--text)}
+
+@media(max-width:700px){
+  .sidebar{display:none}
+  .main{padding:24px 20px}
+  .dbot-grid{grid-template-columns:1fr 1fr}
+  .ioc-grid{grid-template-columns:1fr 1fr}
+  .glossary-grid{grid-template-columns:1fr}
+  .inc-body{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <span class="topbar-brand">CORTEX XSOAR</span>
+  <div class="topbar-sep"></div>
+  <span class="topbar-title">Week 1 · Day 2 — Incidents, Indicators & Marketplace</span>
+  <div class="progress-wrap">
+    <span class="progress-label">Progress</span>
+    <div class="progress-track"><div class="progress-fill" id="progressFill" style="width:20%"></div></div>
+    <span class="lesson-count" id="lessonCount">1 / 5</span>
+  </div>
+</div>
+
+<div class="layout">
+<nav class="sidebar">
+  <div>
+    <div class="sidebar-label">Day 2 Lessons</div>
+    <button class="nav-item active" onclick="goTo(0)" id="nav0">
+      <div class="nav-icon ni-orange">📋</div>
+      <span class="nav-text">Incident Model</span>
+      <div class="nav-dot"></div>
+    </button>
+    <button class="nav-item" onclick="goTo(1)" id="nav1">
+      <div class="nav-icon ni-blue">🔍</div>
+      <span class="nav-text">Indicators & IOCs</span>
+      <div class="nav-dot"></div>
+    </button>
+    <button class="nav-item" onclick="goTo(2)" id="nav2">
+      <div class="nav-icon ni-purple">🛒</div>
+      <span class="nav-text">Marketplace Deep Dive</span>
+      <div class="nav-dot"></div>
+    </button>
+    <button class="nav-item" onclick="goTo(3)" id="nav3">
+      <div class="nav-icon ni-amber">🧠</div>
+      <span class="nav-text">Knowledge Check</span>
+      <div class="nav-dot"></div>
+    </button>
+    <button class="nav-item" onclick="goTo(4)" id="nav4">
+      <div class="nav-icon ni-green">🔬</div>
+      <span class="nav-text">Lab Tasks</span>
+      <div class="nav-dot"></div>
+    </button>
+  </div>
+  <div class="sidebar-footer">
+    <div style="font-family:var(--mono);font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px">Day Info</div>
+    <div style="font-size:11px;color:var(--muted);line-height:1.9">
+      📅 Week 1, Day 2<br>⏱️ ~2 hours<br>🎯 3 Lessons + Lab<br>📋 Requires: Day 1 done
+    </div>
+  </div>
+</nav>
+
+<main class="main">
+
+  <!-- ══════════════════════════
+       LESSON 1: INCIDENT MODEL
+  ══════════════════════════ -->
+  <div class="lesson-panel active" id="panel0">
+    <div class="lesson-hero">
+      <div class="lesson-eyebrow">
+        <span class="eyebrow-tag et-orange">Lesson 1 of 3</span>
+        <span class="lesson-num">// Incident Model</span>
+      </div>
+      <h1 class="lesson-title">The XSOAR Incident — Anatomy of Your Work Unit</h1>
+      <p class="lesson-subtitle">Everything in XSOAR revolves around incidents. Understanding their structure is fundamental before building any automation.</p>
+    </div>
+
+    <div class="obj-box">
+      <div class="obj-label">Learning Objectives</div>
+      <ul class="obj-list">
+        <li>Understand what an XSOAR incident is and what fields it contains</li>
+        <li>Know the 6 severity levels and when each applies</li>
+        <li>Trace an incident through its full lifecycle from creation to closure</li>
+      </ul>
+    </div>
+
+    <div class="day-recap">
+      <div class="recap-label">✓ Day 1 Recap — What You Already Know</div>
+      <div class="recap-row"><div class="recap-dot"></div><div class="recap-text">SOAR = Orchestration + Automation + Response — connects your SOC tools</div></div>
+      <div class="recap-row"><div class="recap-dot"></div><div class="recap-text">XSOAR has 5 components: Server, Engine, Integration, Playbook, Marketplace</div></div>
+      <div class="recap-row"><div class="recap-dot"></div><div class="recap-text">War Room = automatic audit trail + live command terminal per incident</div></div>
+    </div>
+
+    <h2 class="content-h2">What Is an Incident in XSOAR?</h2>
+    <p class="content-p">Every alert that enters XSOAR — from your SIEM, EDR, email gateway, or manually — becomes an <strong style="color:var(--white)">Incident</strong>. It is the core work unit that everything else revolves around.</p>
+    <p class="content-p">Think of it as a structured case file — it holds all the data, all the enrichment results, all the analyst notes, and drives the automated playbook from start to finish.</p>
+
+    <h2 class="content-h2">Incident Anatomy — Every Field Explained</h2>
+    <div class="incident-card">
+      <div class="inc-header">
+        <span class="inc-id">INC-2041</span>
+        <span class="inc-status status-active">ACTIVE</span>
+      </div>
+      <div class="inc-body">
+        <div class="inc-field">
+          <div class="inc-field-label">Name</div>
+          <div class="inc-field-value">Phishing Email — user@company.com</div>
+        </div>
+        <div class="inc-field">
+          <div class="inc-field-label">Type</div>
+          <div class="inc-field-value">Phishing</div>
+        </div>
+        <div class="inc-field">
+          <div class="inc-field-label">Severity</div>
+          <div class="inc-field-value sev-high">⬛ High</div>
+        </div>
+        <div class="inc-field">
+          <div class="inc-field-label">Owner</div>
+          <div class="inc-field-value">analyst01</div>
+        </div>
+        <div class="inc-field">
+          <div class="inc-field-label">Source</div>
+          <div class="inc-field-value">Splunk SIEM</div>
+        </div>
+        <div class="inc-field">
+          <div class="inc-field-label">Created</div>
+          <div class="inc-field-value">2024-06-28 09:14</div>
+        </div>
+        <div class="inc-field">
+          <div class="inc-field-label">Playbook</div>
+          <div class="inc-field-value">Phishing Investigation v2</div>
+        </div>
+        <div class="inc-field">
+          <div class="inc-field-label">Labels</div>
+          <div class="inc-field-value">email, credential-theft, user-reported</div>
+        </div>
+        <div class="inc-field" style="grid-column:1/-1">
+          <div class="inc-field-label">Details / Description</div>
+          <div class="inc-field-value" style="font-size:12px;color:var(--muted)">User reported suspicious email from noreply@micros0ft-support.com with link to credential harvester. Subject: "Your account requires immediate verification."</div>
+        </div>
+      </div>
+    </div>
+
+    <h2 class="content-h2">Severity Levels — Know These by Heart</h2>
+    <p class="content-p">XSOAR has 6 severity levels. Your playbooks can auto-escalate severity based on enrichment results — for example, automatically upgrading Medium to High if VirusTotal returns a malicious verdict.</p>
+
+    <table class="sev-table">
+      <thead><tr><th>Level</th><th>Numeric</th><th>When to Use</th><th>SOC Action</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><span class="sev-pill sp-unknown">Unknown</span></td>
+          <td style="font-family:var(--mono);color:var(--muted)">0</td>
+          <td style="color:var(--text)">Alert came in but hasn't been assessed yet</td>
+          <td style="color:var(--muted)">Pending triage</td>
+        </tr>
+        <tr>
+          <td><span class="sev-pill sp-info">Informational</span></td>
+          <td style="font-family:var(--mono);color:var(--muted)">0.5</td>
+          <td style="color:var(--text)">Logged for awareness, no action needed</td>
+          <td style="color:var(--muted)">Log and close</td>
+        </tr>
+        <tr>
+          <td><span class="sev-pill sp-low">Low</span></td>
+          <td style="font-family:var(--mono);color:var(--muted)">1</td>
+          <td style="color:var(--text)">Suspicious but unlikely to cause impact</td>
+          <td style="color:var(--muted)">Monitor, no immediate action</td>
+        </tr>
+        <tr>
+          <td><span class="sev-pill sp-medium">Medium</span></td>
+          <td style="font-family:var(--mono);color:var(--muted)">2</td>
+          <td style="color:var(--text)">Confirmed threat, limited impact scope</td>
+          <td style="color:var(--muted)">Investigate within SLA</td>
+        </tr>
+        <tr>
+          <td><span class="sev-pill sp-high">High</span></td>
+          <td style="font-family:var(--mono);color:var(--muted)">3</td>
+          <td style="color:var(--text)">Active threat, significant impact risk</td>
+          <td style="color:var(--muted)">Immediate response required</td>
+        </tr>
+        <tr>
+          <td><span class="sev-pill sp-critical">Critical</span></td>
+          <td style="font-family:var(--mono);color:var(--muted)">4</td>
+          <td style="color:var(--text)">Active breach, business impact in progress</td>
+          <td style="color:var(--muted)">Escalate to IR team now</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2 class="content-h2">Incident Lifecycle — From Alert to Closure</h2>
+    <div class="lifecycle">
+      <div class="lc-step">
+        <div class="lc-circle lc-new">🔔</div>
+        <div class="lc-label lc-label-new">New</div>
+      </div>
+      <div class="lc-arrow">→</div>
+      <div class="lc-step">
+        <div class="lc-circle lc-active">⚡</div>
+        <div class="lc-label lc-label-active">Active</div>
+      </div>
+      <div class="lc-arrow">→</div>
+      <div class="lc-step">
+        <div class="lc-circle lc-progress">🔧</div>
+        <div class="lc-label lc-label-progress">In Progress</div>
+      </div>
+      <div class="lc-arrow">→</div>
+      <div class="lc-step">
+        <div class="lc-circle lc-pending">⏳</div>
+        <div class="lc-label lc-label-pending">Pending</div>
+      </div>
+      <div class="lc-arrow">→</div>
+      <div class="lc-step">
+        <div class="lc-circle lc-closed">✓</div>
+        <div class="lc-label lc-label-closed">Closed</div>
+      </div>
+    </div>
+
+    <table class="term-table" style="margin-top:12px">
+      <thead><tr><th>Status</th><th>What It Means</th><th>Who/What Changes It</th></tr></thead>
+      <tbody>
+        <tr><td>New</td><td>Alert just arrived — not yet assigned or worked</td><td>SIEM / integration push</td></tr>
+        <tr><td>Active</td><td>Playbook is running, auto-enrichment in progress</td><td>XSOAR playbook trigger</td></tr>
+        <tr><td>In Progress</td><td>Analyst has picked it up and is investigating</td><td>Analyst manually assigns to self</td></tr>
+        <tr><td>Pending</td><td>Waiting for external input — user reply, approval, ticket update</td><td>Playbook human-in-the-loop task</td></tr>
+        <tr><td>Closed</td><td>Investigation complete — verdict recorded, actions taken</td><td>Analyst or automated close condition</td></tr>
+      </tbody>
+    </table>
+
+    <div class="callout cl-orange">
+      <div class="callout-icon">💡</div>
+      <div class="callout-text">
+        <strong>Your OSINT use case — how severity auto-updates</strong>
+        When you build your OSINT enrichment playbook in Week 3, it will check VirusTotal results and automatically upgrade severity from Medium to High if the IP scores malicious. No analyst touch needed — the incident updates itself.
+      </div>
+    </div>
+
+    <h2 class="content-h2">Incident Types — XSOAR Built-in + Custom</h2>
+    <p class="content-p">Every incident has a <strong style="color:var(--white)">Type</strong> that determines which playbook auto-runs and which fields are visible. XSOAR ships with built-in types and you can create custom ones for your SOC.</p>
+
+    <div class="code-block">
+      <div class="code-header"><span class="code-lang">Built-in Incident Types (partial list)</span></div>
+      <div class="code-body"><span class="st">Phishing</span>          <span class="co">→ triggers Phishing Investigation playbook</span>
+<span class="st">Malware</span>           <span class="co">→ triggers Malware Investigation playbook</span>
+<span class="st">Network</span>           <span class="co">→ triggers Network Incident playbook</span>
+<span class="st">Vulnerability</span>     <span class="co">→ triggers Vulnerability Management playbook</span>
+<span class="st">IAM</span>               <span class="co">→ triggers Identity & Access Management playbook</span>
+<span class="st">Data Exfiltration</span> <span class="co">→ triggers DLP Investigation playbook</span>
+<span class="kw">Custom</span>             <span class="co">→ you define the name + playbook mapping</span></div>
+    </div>
+
+    <div class="lesson-nav">
+      <button class="nav-btn" disabled>← Previous</button>
+      <button class="nav-btn primary" onclick="goTo(1)">Next: Indicators & IOCs →</button>
+    </div>
+  </div>
+
+
+  <!-- ══════════════════════════
+       LESSON 2: INDICATORS
+  ══════════════════════════ -->
+  <div class="lesson-panel" id="panel1">
+    <div class="lesson-hero">
+      <div class="lesson-eyebrow">
+        <span class="eyebrow-tag et-blue">Lesson 2 of 3</span>
+        <span class="lesson-num">// Indicators & IOCs</span>
+      </div>
+      <h1 class="lesson-title">Indicators — XSOAR's IOC Intelligence Store</h1>
+      <p class="lesson-subtitle">Indicators are the threat intelligence objects that link your incidents together. Every IP, URL, hash and domain lives here.</p>
+    </div>
+
+    <div class="obj-box" style="border-left-color:var(--blue)">
+      <div class="obj-label" style="color:var(--blue)">Learning Objectives</div>
+      <ul class="obj-list">
+        <li>Understand what XSOAR Indicators are and how they differ from incident fields</li>
+        <li>Know the DBot Score system — the reputation scale XSOAR uses for every IOC</li>
+        <li>Understand how indicators link to incidents automatically</li>
+      </ul>
+    </div>
+
+    <h2 class="content-h2">What Is an Indicator?</h2>
+    <p class="content-p">An <strong style="color:var(--white)">Indicator</strong> is XSOAR's term for an IOC — any observable artifact that might be associated with a threat. Every time a playbook enriches an IP, URL, file hash, or email address, XSOAR creates an indicator entry and stores it in the Indicators database.</p>
+
+    <div class="key-point">
+      <div class="kp-icon">🔑</div>
+      <div class="kp-text"><strong style="color:var(--white)">Key difference:</strong> Incident fields hold data <em>about a specific case</em>. Indicators are <em>global objects</em> shared across all incidents. If IP 185.220.101.45 appears in 10 different incidents, there is one Indicator entry that links to all 10.</div>
+    </div>
+
+    <h2 class="content-h2">Indicator Types — What XSOAR Tracks</h2>
+    <div class="ioc-grid">
+      <div class="ioc-card">
+        <div class="ioc-icon">🌐</div>
+        <div class="ioc-name">IP Address</div>
+        <div class="ioc-example">185.220.101.45<br>2001:db8::1</div>
+      </div>
+      <div class="ioc-card">
+        <div class="ioc-icon">🔗</div>
+        <div class="ioc-name">URL</div>
+        <div class="ioc-example">hxxps://evil-site.ru/payload</div>
+      </div>
+      <div class="ioc-card">
+        <div class="ioc-icon">🏠</div>
+        <div class="ioc-name">Domain</div>
+        <div class="ioc-example">micros0ft-support.com</div>
+      </div>
+      <div class="ioc-card">
+        <div class="ioc-icon">📄</div>
+        <div class="ioc-name">File Hash</div>
+        <div class="ioc-example">MD5 / SHA1 / SHA256</div>
+      </div>
+      <div class="ioc-card">
+        <div class="ioc-icon">📧</div>
+        <div class="ioc-name">Email Address</div>
+        <div class="ioc-example">attacker@evil.ru</div>
+      </div>
+      <div class="ioc-card">
+        <div class="ioc-icon">👤</div>
+        <div class="ioc-name">Account / CVE</div>
+        <div class="ioc-example">CVE-2024-1234<br>compromised-user</div>
+      </div>
+    </div>
+
+    <h2 class="content-h2">The DBot Score — XSOAR's Reputation System</h2>
+    <p class="content-p">Every indicator gets a <strong style="color:var(--white)">DBot Score</strong> — a reputation rating from 0 to 3 that tells you how malicious it is. This score is set automatically by your integrations (VirusTotal, AbuseIPDB, etc.) and drives playbook decision-making.</p>
+
+    <div class="dbot-grid">
+      <div class="dbot-card">
+        <div class="dbot-score db-unknown">0</div>
+        <div class="dbot-label" style="color:var(--muted)">Unknown</div>
+        <div class="dbot-desc">Never seen before — no reputation data available. Treat with caution.</div>
+      </div>
+      <div class="dbot-card">
+        <div class="dbot-score db-good">1</div>
+        <div class="dbot-label" style="color:var(--green)">Good</div>
+        <div class="dbot-desc">Confirmed safe. Example: 8.8.8.8 (Google DNS) returns DBot Score 1.</div>
+      </div>
+      <div class="dbot-card">
+        <div class="dbot-score db-suspicious">2</div>
+        <div class="dbot-label" style="color:var(--amber)">Suspicious</div>
+        <div class="dbot-desc">Potentially malicious. Needs more investigation. Escalate for review.</div>
+      </div>
+      <div class="dbot-card">
+        <div class="dbot-score db-malicious">3</div>
+        <div class="dbot-label" style="color:#ef4444">Malicious</div>
+        <div class="dbot-desc">Confirmed threat. Playbook should auto-block and escalate immediately.</div>
+      </div>
+    </div>
+
+    <h2 class="content-h2">How DBot Score Drives Playbook Decisions</h2>
+    <p class="content-p">Your OSINT enrichment playbook will use DBot Score as the branching condition. This is the exact logic you will build in Week 3:</p>
+
+    <div class="code-block">
+      <div class="code-header"><span class="code-lang">Playbook Logic — DBot Score Branching</span></div>
+      <div class="code-body"><span class="cm"># Playbook checks DBot Score after enrichment</span>
+
+<span class="kw">IF</span> DBot Score == <span class="val">3</span> (Malicious):
+    → Auto-block IP on firewall
+    → Isolate endpoint on EDR
+    → Escalate severity to Critical
+    → Page on-call analyst
+
+<span class="kw">ELIF</span> DBot Score == <span class="val">2</span> (Suspicious):
+    → Flag for analyst review
+    → Set severity to High
+    → Send Slack notification to SOC channel
+
+<span class="kw">ELIF</span> DBot Score == <span class="val">1</span> (Good):
+    → Mark as False Positive
+    → Auto-close incident
+    → Add to whitelist
+
+<span class="kw">ELSE</span> DBot Score == <span class="val">0</span> (Unknown):
+    → Queue for manual analyst review</div>
+    </div>
+
+    <h2 class="content-h2">Indicator Lifecycle in XSOAR</h2>
+    <table class="term-table">
+      <thead><tr><th>Stage</th><th>What Happens</th></tr></thead>
+      <tbody>
+        <tr><td>Created</td><td>Playbook extracts IOC from incident (e.g. IP from alert email)</td></tr>
+        <tr><td>Enriched</td><td>VirusTotal, AbuseIPDB, Shodan query the IOC — DBot Score assigned</td></tr>
+        <tr><td>Tagged</td><td>Labels added: <span style="font-family:var(--mono);color:var(--orange);font-size:11px">APT28</span>, <span style="font-family:var(--mono);color:var(--orange);font-size:11px">phishing</span>, <span style="font-family:var(--mono);color:var(--orange);font-size:11px">C2</span> — links to MITRE ATT&CK</td></tr>
+        <tr><td>Linked</td><td>Indicator appears in all incidents where it was seen</td></tr>
+        <tr><td>Expired</td><td>After configured TTL (e.g. 30 days) — score resets, re-enrichment queued</td></tr>
+      </tbody>
+    </table>
+
+    <div class="callout cl-blue">
+      <div class="callout-icon">🔍</div>
+      <div class="callout-text">
+        <strong>Try it in your instance</strong>
+        Go to the Indicators section in the left sidebar. Even on a fresh install you may see some default indicators. Notice each one shows its Type, Value, and DBot Score. This is the database your OSINT playbook will populate automatically.
+      </div>
+    </div>
+
+    <div class="lesson-nav">
+      <button class="nav-btn" onclick="goTo(0)">← Incident Model</button>
+      <button class="nav-btn primary" onclick="goTo(2)">Next: Marketplace →</button>
+    </div>
+  </div>
+
+
+  <!-- ══════════════════════════
+       LESSON 3: MARKETPLACE
+  ══════════════════════════ -->
+  <div class="lesson-panel" id="panel2">
+    <div class="lesson-hero">
+      <div class="lesson-eyebrow">
+        <span class="eyebrow-tag et-purple">Lesson 3 of 3</span>
+        <span class="lesson-num">// Marketplace</span>
+      </div>
+      <h1 class="lesson-title">Marketplace — 700+ Integrations, Zero Code Needed</h1>
+      <p class="lesson-subtitle">Before you build anything custom, check if it already exists. Most common tools are already integrated and free to install.</p>
+    </div>
+
+    <div class="obj-box" style="border-left-color:var(--purple)">
+      <div class="obj-label" style="color:var(--purple)">Learning Objectives</div>
+      <ul class="obj-list">
+        <li>Navigate the Marketplace and understand what each integration card shows</li>
+        <li>Know the difference between Content Packs, Integrations, Playbooks, and Scripts</li>
+        <li>Install your first integration (VirusTotal) and configure it</li>
+      </ul>
+    </div>
+
+    <h2 class="content-h2">What's Inside the Marketplace?</h2>
+    <p class="content-p">The Marketplace contains <strong style="color:var(--white)">Content Packs</strong> — bundles that include integrations, playbooks, incident types, dashboards, and scripts all related to one tool or use case. Install one pack and you get everything you need for that vendor.</p>
+
+    <table class="term-table">
+      <thead><tr><th>Item Type</th><th>What It Is</th><th>Example</th></tr></thead>
+      <tbody>
+        <tr><td>Integration</td><td>API connector to external tool</td><td>VirusTotal integration → exposes 8 commands</td></tr>
+        <tr><td>Playbook</td><td>Pre-built automated runbook</td><td>"Phishing Investigation - Generic v2"</td></tr>
+        <tr><td>Script</td><td>Python automation function</td><td>ParseEmailFiles, ExtractIndicators</td></tr>
+        <tr><td>Incident Type</td><td>Incident category with field layout</td><td>Phishing, Malware, Network</td></tr>
+        <tr><td>Dashboard</td><td>SOC metrics visualisation</td><td>Analyst Workload, MTTR Report</td></tr>
+        <tr><td>Content Pack</td><td>Bundle of all the above for one vendor</td><td>VirusTotal Pack = integration + playbooks + scripts</td></tr>
+      </tbody>
+    </table>
+
+    <h2 class="content-h2">Your OSINT Packs — Find These Today</h2>
+    <p class="content-p">These are the four integrations that will power your OSINT enrichment playbook. All are free to install:</p>
+
+    <!-- VT Card -->
+    <div class="mkt-card">
+      <div class="mkt-top">
+        <div class="mkt-logo">🔬</div>
+        <div class="mkt-info">
+          <div class="mkt-name">VirusTotal</div>
+          <div class="mkt-author">by Palo Alto Networks · Free</div>
+          <div class="mkt-tags">
+            <span class="mkt-tag">Threat Intel</span>
+            <span class="mkt-tag">Enrichment</span>
+            <span class="mkt-tag">IOC Analysis</span>
+          </div>
+        </div>
+        <button class="mkt-install" onclick="this.textContent='✓ Installed';this.classList.add('installed')">Install</button>
+      </div>
+      <div class="mkt-body">
+        <div class="mkt-desc">Analyse suspicious files, IPs, URLs, and domains against 70+ antivirus engines and websites. Returns DBot Score automatically for all indicator types.</div>
+        <ul class="cmd-list">
+          <li class="cmd-item"><span class="cmd-name">!vt-get-ip-report</span><span class="cmd-desc">ip=</span><span style="color:var(--muted);font-family:var(--mono);font-size:11px"> → IP reputation from 70+ sources</span></li>
+          <li class="cmd-item"><span class="cmd-name">!vt-get-url-report</span><span class="cmd-desc">url=</span><span style="color:var(--muted);font-family:var(--mono);font-size:11px"> → URL scan results</span></li>
+          <li class="cmd-item"><span class="cmd-name">!vt-get-file-report</span><span class="cmd-desc">file=</span><span style="color:var(--muted);font-family:var(--mono);font-size:11px"> → File hash scan</span></li>
+          <li class="cmd-item"><span class="cmd-name">!vt-get-domain-report</span><span class="cmd-desc">domain=</span><span style="color:var(--muted);font-family:var(--mono);font-size:11px"> → Domain reputation</span></li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- AbuseIPDB Card -->
+    <div class="mkt-card">
+      <div class="mkt-top">
+        <div class="mkt-logo">🚫</div>
+        <div class="mkt-info">
+          <div class="mkt-name">AbuseIPDB</div>
+          <div class="mkt-author">by Palo Alto Networks · Free (requires free API key)</div>
+          <div class="mkt-tags">
+            <span class="mkt-tag">IP Reputation</span>
+            <span class="mkt-tag">Abuse Reports</span>
+          </div>
+        </div>
+        <button class="mkt-install" onclick="this.textContent='✓ Installed';this.classList.add('installed')">Install</button>
+      </div>
+      <div class="mkt-body">
+        <div class="mkt-desc">Checks IPs against a community-driven database of reported abuse. Returns abuse confidence score (0-100%) and category (phishing, spam, brute-force, etc.)</div>
+        <ul class="cmd-list">
+          <li class="cmd-item"><span class="cmd-name">!abuseipdb-check-ip</span><span class="cmd-desc">ip=</span><span style="color:var(--muted);font-family:var(--mono);font-size:11px"> → abuse score + report count + categories</span></li>
+          <li class="cmd-item"><span class="cmd-name">!abuseipdb-report-ip</span><span class="cmd-desc">ip= categories=</span><span style="color:var(--muted);font-family:var(--mono);font-size:11px"> → submit new abuse report</span></li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Shodan Card -->
+    <div class="mkt-card">
+      <div class="mkt-top">
+        <div class="mkt-logo">📡</div>
+        <div class="mkt-info">
+          <div class="mkt-name">Shodan</div>
+          <div class="mkt-author">by Palo Alto Networks · Free tier available</div>
+          <div class="mkt-tags">
+            <span class="mkt-tag">Internet Recon</span>
+            <span class="mkt-tag">Port Scan</span>
+            <span class="mkt-tag">Banner Grab</span>
+          </div>
+        </div>
+        <button class="mkt-install" onclick="this.textContent='✓ Installed';this.classList.add('installed')">Install</button>
+      </div>
+      <div class="mkt-body">
+        <div class="mkt-desc">Returns open ports, services, OS, ISP, and geolocation for any internet-facing IP. Reveals attacker infrastructure details without actively scanning them.</div>
+        <ul class="cmd-list">
+          <li class="cmd-item"><span class="cmd-name">!shodan-search</span><span class="cmd-desc">query=</span><span style="color:var(--muted);font-family:var(--mono);font-size:11px"> → search Shodan index</span></li>
+          <li class="cmd-item"><span class="cmd-name">!shodan-get-host-by-ip</span><span class="cmd-desc">ip=</span><span style="color:var(--muted);font-family:var(--mono);font-size:11px"> → ports, services, banners for IP</span></li>
+        </ul>
+      </div>
+    </div>
+
+    <h2 class="content-h2">How to Configure an Integration — Step by Step</h2>
+    <p class="content-p">Installing from Marketplace only downloads the code. You still need to configure it with your API credentials before commands work.</p>
+
+    <div class="code-block">
+      <div class="code-header"><span class="code-lang">Integration Setup — VirusTotal Example</span></div>
+      <div class="code-body"><span class="val">Step 1</span>  Marketplace → search <span class="st">"VirusTotal"</span> → Install
+
+<span class="val">Step 2</span>  Settings → Integrations → search <span class="st">"VirusTotal"</span> → click <span class="st">Add instance</span>
+
+<span class="val">Step 3</span>  Fill in:
+         Name:    <span class="st">VirusTotal_Production</span>
+         API Key: <span class="st">YOUR_VT_API_KEY</span>    <span class="cm">← from virustotal.com/gui/my-apikey</span>
+
+<span class="val">Step 4</span>  Click <span class="st">Test</span>  → should show <span class="kw">✓ Test passed</span>
+
+<span class="val">Step 5</span>  Click <span class="st">Save & Exit</span>
+
+<span class="cm"># Now in any War Room or Playbook you can run:</span>
+!vt-get-ip-report ip=<span class="st">"185.220.101.45"</span>   <span class="cm">← this will now actually work!</span></div>
+    </div>
+
+    <div class="callout cl-green">
+      <div class="callout-icon">✅</div>
+      <div class="callout-text">
+        <strong>Free API keys you need for Week 3 lab — get these now</strong>
+        Register at these sites and save the API keys — you'll use them in the OSINT playbook lab:<br><br>
+        → virustotal.com (free, 4 requests/min)<br>
+        → abuseipdb.com (free, 1000 checks/day)<br>
+        → shodan.io (free tier available)<br>
+        → urlscan.io (free, no key needed for basic scans)
+      </div>
+    </div>
+
+    <div class="lesson-nav">
+      <button class="nav-btn" onclick="goTo(1)">← Indicators & IOCs</button>
+      <button class="nav-btn primary" onclick="goTo(3)">Knowledge Check →</button>
+    </div>
+  </div>
+
+
+  <!-- ══════════════════════════
+       QUIZ
+  ══════════════════════════ -->
+  <div class="lesson-panel" id="panel3">
+    <div class="lesson-hero">
+      <div class="lesson-eyebrow">
+        <span class="eyebrow-tag et-amber">Knowledge Check</span>
+        <span class="lesson-num">// 5 Questions</span>
+      </div>
+      <h1 class="lesson-title">Test What You've Learned</h1>
+      <p class="lesson-subtitle">Day 2 concepts — incidents, indicators, DBot Score, and Marketplace.</p>
+    </div>
+
+    <div class="quiz-wrap" id="quizWrap">
+
+      <div class="quiz-q">
+        <div class="quiz-num">Question 1 of 5</div>
+        <div class="quiz-question">A phishing alert fires from your SIEM. VirusTotal returns a score of 8/10 engines flagging the source IP as malicious. What DBot Score does XSOAR assign to this indicator?</div>
+        <div class="quiz-options">
+          <button class="quiz-opt" onclick="answer(0,0,2)">A. DBot Score 0 — Unknown, not enough data</button>
+          <button class="quiz-opt" onclick="answer(0,1,2)">B. DBot Score 1 — Good, VT gave it a number</button>
+          <button class="quiz-opt" onclick="answer(0,2,2)">C. DBot Score 3 — Malicious, confirmed by multiple engines</button>
+          <button class="quiz-opt" onclick="answer(0,3,2)">D. DBot Score 2 — Suspicious, needs more review</button>
+        </div>
+        <div class="quiz-feedback qf-correct" id="qf0-correct">✓ Correct! 8/10 antivirus engines flagging is a confirmed malicious verdict — DBot Score 3. Your playbook should react to this by auto-blocking and escalating to Critical severity.</div>
+        <div class="quiz-feedback qf-wrong" id="qf0-wrong">✗ DBot Score 3 = Malicious. When the majority of engines flag an IOC, that's a confirmed threat. Score 2 (Suspicious) would apply when only a few engines flag it and there's uncertainty.</div>
+      </div>
+
+      <div class="quiz-q">
+        <div class="quiz-num">Question 2 of 5</div>
+        <div class="quiz-question">IP address 185.220.101.45 appears in 12 different phishing incidents in your XSOAR instance. How many Indicator entries exist for this IP?</div>
+        <div class="quiz-options">
+          <button class="quiz-opt" onclick="answer(1,0,0)">A. One — indicators are global objects shared across all incidents</button>
+          <button class="quiz-opt" onclick="answer(1,1,0)">B. Twelve — one entry created per incident</button>
+          <button class="quiz-opt" onclick="answer(1,2,0)">C. Zero — indicators are only created manually</button>
+          <button class="quiz-opt" onclick="answer(1,3,0)">D. It depends on the playbook configuration</button>
+        </div>
+        <div class="quiz-feedback qf-correct" id="qf1-correct">✓ Correct! There is exactly ONE indicator entry for that IP. It links to all 12 incidents. This is what makes the Indicators database powerful — you can see all incidents involving a threat actor's IP in one place.</div>
+        <div class="quiz-feedback qf-wrong" id="qf1-wrong">✗ One indicator entry exists, linked to all 12 incidents. Indicators are global objects — not duplicated per incident. This lets you pivot across all cases involving the same IOC instantly.</div>
+      </div>
+
+      <div class="quiz-q">
+        <div class="quiz-num">Question 3 of 5</div>
+        <div class="quiz-question">An alert arrives in XSOAR from the SIEM. No analyst has touched it yet. The playbook is about to start running. What is the correct incident status at this moment?</div>
+        <div class="quiz-options">
+          <button class="quiz-opt" onclick="answer(2,0,1)">A. In Progress</button>
+          <button class="quiz-opt" onclick="answer(2,1,1)">B. Active</button>
+          <button class="quiz-opt" onclick="answer(2,2,1)">C. Pending</button>
+          <button class="quiz-opt" onclick="answer(2,3,1)">D. New</button>
+        </div>
+        <div class="quiz-feedback qf-correct" id="qf2-correct">✓ Correct! Active means the playbook is running and auto-enrichment is in progress. New is the very first state before any processing starts. In Progress is when an analyst manually picks it up.</div>
+        <div class="quiz-feedback qf-wrong" id="qf2-wrong">✗ Active is correct here. The lifecycle goes: New (just arrived) → Active (playbook running) → In Progress (analyst working it) → Pending (waiting for input) → Closed. The playbook running means it's Active.</div>
+      </div>
+
+      <div class="quiz-q">
+        <div class="quiz-num">Question 4 of 5</div>
+        <div class="quiz-question">You install the VirusTotal Content Pack from Marketplace. You then go to the War Room and run !vt-get-ip-report ip="8.8.8.8" — but get an error saying "integration not configured." What did you miss?</div>
+        <div class="quiz-options">
+          <button class="quiz-opt" onclick="answer(3,0,2)">A. You need to restart the XSOAR server after installing</button>
+          <button class="quiz-opt" onclick="answer(3,1,2)">B. The VirusTotal pack requires a paid licence</button>
+          <button class="quiz-opt" onclick="answer(3,2,2)">C. Installing downloads the code — you still need to add an instance with your API key in Settings → Integrations</button>
+          <button class="quiz-opt" onclick="answer(3,3,2)">D. The command syntax is wrong — it should be !virustotal ip=</button>
+        </div>
+        <div class="quiz-feedback qf-correct" id="qf3-correct">✓ Correct! Installing from Marketplace only downloads the integration code. You must then go to Settings → Integrations, find VirusTotal, click "Add instance," and enter your API key. Then test it — only after a passing test does the command work.</div>
+        <div class="quiz-feedback qf-wrong" id="qf3-wrong">✗ The missing step is adding an integration instance. Marketplace installs the code, but you still need to configure credentials. Go to Settings → Integrations → find VirusTotal → Add instance → enter API key → Test → Save.</div>
+      </div>
+
+      <div class="quiz-q">
+        <div class="quiz-num">Question 5 of 5</div>
+        <div class="quiz-question">You want XSOAR to automatically check AbuseIPDB AND VirusTotal AND Shodan for every new phishing incident — and store all results in one place for the analyst. Which combination of XSOAR features makes this happen?</div>
+        <div class="quiz-options">
+          <button class="quiz-opt" onclick="answer(4,0,3)">A. Three separate War Rooms — one per integration</button>
+          <button class="quiz-opt" onclick="answer(4,1,3)">B. A Dashboard showing all three tool outputs</button>
+          <button class="quiz-opt" onclick="answer(4,2,3)">C. A custom Python script that queries all three APIs</button>
+          <button class="quiz-opt" onclick="answer(4,3,3)">D. Three Integrations configured + one Playbook that calls all three commands → results stored in incident context + War Room</button>
+        </div>
+        <div class="quiz-feedback qf-correct" id="qf4-correct">✓ Correct! This is exactly the OSINT enrichment playbook you will build in Week 3. Install 3 integrations, build one playbook with 3 parallel tasks calling each command, and all results flow into the incident context and War Room automatically.</div>
+        <div class="quiz-feedback qf-wrong" id="qf4-wrong">✗ The answer is option D — integrations provide the API connections, and a playbook orchestrates all three calls together. Results land in incident context (structured data) and War Room (readable log). This is your Week 3 capstone lab.</div>
+      </div>
+
+      <div class="quiz-score" id="quizScore">
+        <div class="score-num" id="scoreNum">0/5</div>
+        <div class="score-label">Day 2 Knowledge Check Complete</div>
+        <div class="score-msg" id="scoreMsg"></div>
+      </div>
+    </div>
+
+    <div class="lesson-nav">
+      <button class="nav-btn" onclick="goTo(2)">← Marketplace</button>
+      <button class="nav-btn primary" onclick="goTo(4)">Lab Tasks →</button>
+    </div>
+  </div>
+
+
+  <!-- ══════════════════════════
+       LAB
+  ══════════════════════════ -->
+  <div class="lesson-panel" id="panel4">
+    <div class="lesson-hero">
+      <div class="lesson-eyebrow">
+        <span class="eyebrow-tag et-green">Day 2 Lab</span>
+        <span class="lesson-num">// Hands-on Tasks</span>
+      </div>
+      <h1 class="lesson-title">Lab: Incidents, Indicators & First Integration</h1>
+      <p class="lesson-subtitle">Three tasks today. By the end, you will have a working VirusTotal integration and your first enriched indicator.</p>
+    </div>
+
+    <div class="obj-box" style="border-left-color:var(--green)">
+      <div class="obj-label" style="color:var(--green)">Prerequisites</div>
+      <ul class="obj-list">
+        <li>Day 1 lab complete — XSOAR instance running, first incident created</li>
+        <li>Free VirusTotal account — get API key from virustotal.com/gui/my-apikey</li>
+        <li>Estimated time: 45–60 minutes</li>
+      </ul>
+    </div>
+
+    <div class="lab-card">
+      <div class="lab-header">
+        <div class="lab-title">Task 1 — Explore Incident Fields</div>
+        <div class="lab-badge">TASK 01</div>
+      </div>
+      <div class="lab-body">
+        <div class="check-item" onclick="toggleCheck(this)">
+          <div class="check-box"><span class="check-tick">✓</span></div>
+          <div class="check-label">
+            <strong>Open your "Test - Phishing Alert" incident from Day 1</strong>
+            <small>Go to Incidents → click on the incident name</small>
+          </div>
+        </div>
+        <div class="check-item" onclick="toggleCheck(this)">
+          <div class="check-box"><span class="check-tick">✓</span></div>
+          <div class="check-label">
+            <strong>Find the Severity field — change it from Medium to High</strong>
+            <small>Click the severity dropdown directly on the incident view</small>
+          </div>
+        </div>
+        <div class="check-item" onclick="toggleCheck(this)">
+          <div class="check-box"><span class="check-tick">✓</span></div>
+          <div class="check-label">
+            <strong>Find the Owner field — assign it to yourself</strong>
+            <small>This simulates an analyst claiming the incident</small>
+          </div>
+        </div>
+        <div class="check-item" onclick="toggleCheck(this)">
+          <div class="check-box"><span class="check-tick">✓</span></div>
+          <div class="check-label">
+            <strong>Add a label: "lab-test"</strong>
+            <small>Labels help filter and search incidents — look for a Labels or Tags field</small>
+          </div>
+        </div>
+        <div class="check-item" onclick="toggleCheck(this)">
+          <div class="check-box"><span class="check-tick">✓</span></div>
+          <div class="check-label">
+            <strong>Notice these changes appear in the War Room automatically</strong>
+            <small>Every field change is timestamped — your audit trail is building itself</small>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="lab-card">
+      <div class="lab-header">
+        <div class="lab-title">Task 2 — Install VirusTotal from Marketplace</div>
+        <div class="lab-badge">TASK 02</div>
+      </div>
+      <div class="lab-body">
+        <div class="check-item" onclick="toggleCheck(this)">
+          <div class="check-box"><span class="check-tick">✓</span></div>
+          <div class="check-label">
+            <strong>Go to Marketplace (top-right grid icon)</strong>
+            <small>This is the XSOAR app store</small>
+          </div>
+        </div>
+        <div class="check-item" onclick="toggleCheck(this)">
+          <div class="check-box"><span class="check-tick">✓</span></div>
+          <div class="check-label">
+            <strong>Search "VirusTotal" → find the official Palo Alto Networks pack</strong>
+            <small>Look for the pack with highest installs and the Palo Alto author tag</small>
+          </div>
+        </div>
+        <div class="check-item" onclick="toggleCheck(this)">
+          <div class="check-box"><span class="check-tick">✓</span></div>
+          <div class="check-label">
+            <strong>Click Install — confirm the installation prompt</strong>
+            <small>This downloads the integration code, playbooks, and scripts in the pack</small>
+          </div>
+        </div>
+        <div class="check-item" onclick="toggleCheck(this)">
+          <div class="check-box"><span class="check-tick">✓</span></div>
+          <div class="check-label">
+            <strong>Go to Settings → Integrations → search VirusTotal → Add instance</strong>
+            <small>Settings is the gear icon, usually bottom-left of the sidebar</small>
+          </div>
+        </div>
+        <div class="check-item" onclick="toggleCheck(this)">
+          <div class="check-box"><span class="check-tick">✓</span></div>
+          <div class="check-label">
+            <strong>Paste your VirusTotal API key → click Test → should say "Test passed"</strong>
+            <small>Get your free API key from virustotal.com → profile icon → API Key</small>
+          </div>
+        </div>
+        <div class="check-item" onclick="toggleCheck(this)">
+          <div class="check-box"><span class="check-tick">✓</span></div>
+          <div class="check-label">
+            <strong>Click Save & Exit</strong>
+            <small>Your integration is now configured and ready</small>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="lab-card">
+      <div class="lab-header">
+        <div class="lab-title">Task 3 — Your First Real Enrichment</div>
+        <div class="lab-badge">TASK 03</div>
+      </div>
+      <div class="lab-body">
+        <div class="check-item" onclick="toggleCheck(this)">
+          <div class="check-box"><span class="check-tick">✓</span></div>
+          <div class="check-label">
+            <strong>Open your incident → go to War Room tab</strong>
+            <small>The same incident from Task 1</small>
+          </div>
+        </div>
+        <div class="check-item" onclick="toggleCheck(this)">
+          <div class="check-box"><span class="check-tick">✓</span></div>
+          <div class="check-label">
+            <strong>Type and run: !vt-get-ip-report ip="8.8.8.8"</strong>
+            <small>8.8.8.8 is Google's DNS — safe to query, will return DBot Score 1 (Good)</small>
+          </div>
+        </div>
+        <div class="check-item" onclick="toggleCheck(this)">
+          <div class="check-box"><span class="check-tick">✓</span></div>
+          <div class="check-label">
+            <strong>Read the result — find the DBot Score in the output</strong>
+            <small>You should see Score: 1 (Good) for 8.8.8.8 — that's expected</small>
+          </div>
+        </div>
+        <div class="check-item" onclick="toggleCheck(this)">
+          <div class="check-box"><span class="check-tick">✓</span></div>
+          <div class="check-label">
+            <strong>Go to Indicators in the left sidebar — find the 8.8.8.8 entry</strong>
+            <small>XSOAR automatically created an indicator entry from your query result</small>
+          </div>
+        </div>
+        <div class="check-item" onclick="toggleCheck(this)">
+          <div class="check-box"><span class="check-tick">✓</span></div>
+          <div class="check-label">
+            <strong>Bonus: Also run !abuseipdb-check-ip if you installed that integration</strong>
+            <small>Compare the output format to VirusTotal — same IP, different data source</small>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="callout cl-orange">
+      <div class="callout-icon">🎯</div>
+      <div class="callout-text">
+        <strong>What to bring to Day 3</strong>
+        You should now have a working VirusTotal integration. Next session we begin Python basics — the language powering every XSOAR script and integration. No experience needed. Come ready to write your first 3 lines of code.
+      </div>
+    </div>
+
+    <h2 class="content-h2">Day 2 Glossary</h2>
+    <div class="glossary-grid">
+      <div class="gloss-item">
+        <div class="gloss-term">Incident Type</div>
+        <div class="gloss-def">Category that determines which playbook auto-runs and which fields are shown (Phishing, Malware, Network, etc.)</div>
+      </div>
+      <div class="gloss-item">
+        <div class="gloss-term">Severity</div>
+        <div class="gloss-def">6-level scale (Unknown → Critical) that drives analyst priority and can be auto-updated by playbooks</div>
+      </div>
+      <div class="gloss-item">
+        <div class="gloss-term">Indicator</div>
+        <div class="gloss-def">Global IOC object (IP, URL, hash, domain) — shared across incidents, holds DBot Score and enrichment data</div>
+      </div>
+      <div class="gloss-item">
+        <div class="gloss-term">DBot Score</div>
+        <div class="gloss-def">XSOAR reputation scale: 0=Unknown, 1=Good, 2=Suspicious, 3=Malicious — drives playbook branching</div>
+      </div>
+      <div class="gloss-item">
+        <div class="gloss-term">Content Pack</div>
+        <div class="gloss-def">Marketplace bundle containing an integration + playbooks + scripts + incident types for one vendor</div>
+      </div>
+      <div class="gloss-item">
+        <div class="gloss-term">Integration Instance</div>
+        <div class="gloss-def">A configured copy of an integration with specific API credentials — one integration can have multiple instances</div>
+      </div>
+      <div class="gloss-item">
+        <div class="gloss-term">Incident Lifecycle</div>
+        <div class="gloss-def">New → Active → In Progress → Pending → Closed — tracks where in the workflow each case sits</div>
+      </div>
+      <div class="gloss-item">
+        <div class="gloss-term">IOC</div>
+        <div class="gloss-def">Indicator of Compromise — any artifact (IP, hash, URL, domain) associated with a threat actor or campaign</div>
+      </div>
+    </div>
+
+    <div class="lesson-nav">
+      <button class="nav-btn" onclick="goTo(3)">← Knowledge Check</button>
+      <button class="nav-btn primary" onclick="complete()">✓ Mark Day 2 Complete</button>
+    </div>
+  </div>
+
+</main>
+</div>
+
+<script>
+let quizSubmitted={0:false,1:false,2:false,3:false,4:false};
+let quizAnswers={0:null,1:null,2:null,3:null,4:null};
+
+function goTo(idx){
+  document.querySelectorAll('.lesson-panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('panel'+idx).classList.add('active');
+  document.getElementById('nav'+idx).classList.add('active');
+  document.getElementById('lessonCount').textContent=(idx+1)+' / 5';
+  document.getElementById('progressFill').style.width=Math.round(((idx+1)/5)*100)+'%';
+  for(let i=0;i<idx;i++) document.getElementById('nav'+i).classList.add('done');
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+function answer(qIdx,optIdx,correct){
+  if(quizSubmitted[qIdx]) return;
+  quizSubmitted[qIdx]=true;
+  const qEl=document.querySelectorAll('.quiz-q')[qIdx];
+  const opts=qEl.querySelectorAll('.quiz-opt');
+  opts.forEach(o=>o.disabled=true);
+  if(optIdx===correct){
+    opts[optIdx].classList.add('correct');
+    document.getElementById('qf'+qIdx+'-correct').style.display='block';
+    quizAnswers[qIdx]=true;
+  } else {
+    opts[optIdx].classList.add('wrong');
+    opts[correct].classList.add('correct');
+    document.getElementById('qf'+qIdx+'-wrong').style.display='block';
+    quizAnswers[qIdx]=false;
+  }
+  if(Object.values(quizSubmitted).every(v=>v===true)) showScore();
+}
+
+function showScore(){
+  const score=Object.values(quizAnswers).filter(v=>v===true).length;
+  const el=document.getElementById('quizScore');
+  el.style.display='block';
+  document.getElementById('scoreNum').textContent=score+'/5';
+  const msgs={5:'🏆 Perfect. You have solid command of Day 2 — incidents, indicators, and Marketplace all clear. Head to the lab.',4:'✅ Strong. One gap — re-read the feedback for the missed question, then continue.',3:'📖 Good effort. Review Lessons 1 and 2 once more, focusing on DBot Score and the incident lifecycle.',2:'🔄 Go back through the lessons. The concepts will click — there is no rush.',1:'🔄 Start from Lesson 1 again. Read each section before re-taking.',0:'🔄 Take a break then re-read from Lesson 1.'};
+  document.getElementById('scoreMsg').textContent=msgs[score]||msgs[0];
+}
+
+function toggleCheck(el){el.classList.toggle('checked')}
+
+function complete(){
+  alert('🎉 Day 2 Complete!\n\nYou now have:\n✓ A solid understanding of the Incident model\n✓ Knowledge of Indicators and DBot Scores\n✓ A working VirusTotal integration\n✓ Your first enriched indicator\n\nDay 3: Python basics — writing your first code for XSOAR automation.');
+}
+</script>
+</body>
+</html>
