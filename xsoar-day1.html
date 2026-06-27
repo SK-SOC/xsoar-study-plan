@@ -1,0 +1,1049 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>XSOAR Day 1 — SOAR Fundamentals</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#06090f;--surface:#0d1422;--surface2:#111b30;
+  --border:#1a2540;--border2:#243050;
+  --orange:#ff6230;--orange-dim:rgba(255,98,48,0.12);--orange-border:rgba(255,98,48,0.3);
+  --blue:#3a8dde;--blue-dim:rgba(58,141,222,0.12);
+  --green:#27c47a;--green-dim:rgba(39,196,122,0.12);
+  --purple:#8b5cf6;--amber:#ffb347;--red:#ef4444;
+  --text:#c8d6f0;--muted:#4a6080;--white:#f0f4ff;
+  --mono:'JetBrains Mono',monospace;
+}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-size:14px;line-height:1.7;min-height:100vh;display:flex;flex-direction:column}
+
+/* ── TOP BAR ── */
+.topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:0 32px;display:flex;align-items:center;gap:16px;height:52px;position:sticky;top:0;z-index:100}
+.topbar-brand{font-family:var(--mono);font-size:11px;color:var(--orange);font-weight:600;letter-spacing:.08em;white-space:nowrap}
+.topbar-sep{width:1px;height:20px;background:var(--border)}
+.topbar-title{font-size:13px;font-weight:600;color:var(--white);flex:1}
+.progress-wrap{display:flex;align-items:center;gap:10px;margin-left:auto}
+.progress-label{font-family:var(--mono);font-size:10px;color:var(--muted);white-space:nowrap}
+.progress-track{width:120px;height:4px;background:var(--border);border-radius:2px;overflow:hidden}
+.progress-fill{height:100%;background:var(--orange);border-radius:2px;transition:width .4s ease}
+.lesson-count{font-family:var(--mono);font-size:10px;color:var(--muted);white-space:nowrap}
+
+/* ── LAYOUT ── */
+.layout{display:flex;flex:1;min-height:0}
+
+/* ── SIDEBAR ── */
+.sidebar{width:220px;flex-shrink:0;background:var(--surface);border-right:1px solid var(--border);padding:20px 0;position:sticky;top:52px;height:calc(100vh - 52px);overflow-y:auto}
+.sidebar-section{padding:0 16px;margin-bottom:6px}
+.sidebar-label{font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);padding:8px 8px 4px}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 8px;border-radius:6px;cursor:pointer;transition:background .15s;border:none;background:none;width:100%;text-align:left}
+.nav-item:hover{background:rgba(255,255,255,.04)}
+.nav-item.active{background:var(--orange-dim);border:1px solid var(--orange-border)}
+.nav-icon{width:22px;height:22px;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0}
+.ni-orange{background:var(--orange-dim);color:var(--orange)}
+.ni-blue{background:var(--blue-dim);color:var(--blue)}
+.ni-green{background:var(--green-dim);color:var(--green)}
+.ni-purple{background:rgba(139,92,246,.12);color:var(--purple)}
+.ni-amber{background:rgba(255,179,71,.12);color:var(--amber)}
+.nav-text{font-size:12px;color:var(--text);font-weight:500;line-height:1.3}
+.nav-item.active .nav-text{color:var(--white)}
+.nav-item.done .nav-icon::after{content:'✓';font-size:9px}
+.nav-dot{width:6px;height:6px;border-radius:50%;background:var(--border);margin-left:auto;flex-shrink:0;transition:background .2s}
+.nav-item.active .nav-dot{background:var(--orange)}
+.nav-item.done .nav-dot{background:var(--green)}
+
+/* ── MAIN ── */
+.main{flex:1;overflow-y:auto;padding:40px 48px;max-width:800px}
+
+/* ── LESSON PANEL ── */
+.lesson-panel{display:none}
+.lesson-panel.active{display:block;animation:fadeIn .25s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+
+/* ── LESSON HERO ── */
+.lesson-hero{margin-bottom:32px}
+.lesson-eyebrow{display:flex;align-items:center;gap:8px;margin-bottom:12px}
+.eyebrow-tag{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.1em;padding:3px 10px;border-radius:2px}
+.et-orange{background:var(--orange-dim);color:var(--orange);border:1px solid var(--orange-border)}
+.et-blue{background:var(--blue-dim);color:var(--blue);border:1px solid rgba(58,141,222,.3)}
+.et-green{background:var(--green-dim);color:var(--green);border:1px solid rgba(39,196,122,.3)}
+.et-purple{background:rgba(139,92,246,.12);color:var(--purple);border:1px solid rgba(139,92,246,.3)}
+.et-amber{background:rgba(255,179,71,.12);color:var(--amber);border:1px solid rgba(255,179,71,.3)}
+.lesson-num{font-family:var(--mono);font-size:10px;color:var(--muted)}
+.lesson-title{font-size:26px;font-weight:800;color:var(--white);letter-spacing:-.02em;line-height:1.2;margin-bottom:8px}
+.lesson-subtitle{font-size:14px;color:var(--muted);max-width:520px}
+
+/* ── OBJECTIVE BOX ── */
+.obj-box{background:var(--surface2);border:1px solid var(--border);border-left:3px solid var(--orange);border-radius:0 6px 6px 0;padding:14px 18px;margin-bottom:28px}
+.obj-label{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--orange);margin-bottom:8px}
+.obj-list{list-style:none}
+.obj-list li{font-size:13px;color:var(--text);padding:3px 0;display:flex;gap:8px;align-items:flex-start}
+.obj-list li::before{content:'→';color:var(--orange);flex-shrink:0;margin-top:1px}
+
+/* ── CONTENT BLOCKS ── */
+.content-h2{font-size:17px;font-weight:700;color:var(--white);margin:28px 0 12px;padding-bottom:8px;border-bottom:1px solid var(--border)}
+.content-h3{font-size:14px;font-weight:600;color:var(--white);margin:20px 0 8px}
+.content-p{font-size:14px;color:var(--text);margin-bottom:14px;line-height:1.75}
+
+/* ── SCENARIO CARD ── */
+.scenario{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:20px;margin-bottom:20px}
+.scenario-header{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+.scenario-icon{font-size:20px}
+.scenario-title{font-size:13px;font-weight:600;color:var(--white)}
+.scenario-sub{font-size:11px;color:var(--muted)}
+.flow-list{list-style:none}
+.flow-list li{display:flex;align-items:flex-start;gap:10px;padding:7px 0;border-bottom:1px solid rgba(255,255,255,.04)}
+.flow-list li:last-child{border-bottom:none}
+.flow-step{width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;flex-shrink:0;margin-top:2px;font-family:var(--mono)}
+.fs-manual{background:rgba(239,68,68,.15);color:#ef4444;border:1px solid rgba(239,68,68,.3)}
+.fs-auto{background:var(--green-dim);color:var(--green);border:1px solid rgba(39,196,122,.3)}
+.flow-text{font-size:13px;color:var(--text)}
+.flow-text s{color:var(--muted);text-decoration:line-through}
+.pain-tag{display:inline-block;font-size:10px;font-family:var(--mono);background:rgba(239,68,68,.1);color:#ef4444;padding:2px 7px;border-radius:10px;margin-left:8px;border:1px solid rgba(239,68,68,.25)}
+.auto-tag{display:inline-block;font-size:10px;font-family:var(--mono);background:var(--green-dim);color:var(--green);padding:2px 7px;border-radius:10px;margin-left:8px;border:1px solid rgba(39,196,122,.25)}
+
+/* ── TERM TABLE ── */
+.term-table{width:100%;border-collapse:collapse;margin-bottom:20px}
+.term-table th{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);padding:8px 12px;text-align:left;border-bottom:2px solid var(--border)}
+.term-table td{padding:12px;border-bottom:1px solid rgba(255,255,255,.04);font-size:13px;vertical-align:top}
+.term-table tr:last-child td{border-bottom:none}
+.term-table td:first-child{font-family:var(--mono);font-weight:600;color:var(--orange);white-space:nowrap;width:130px}
+.term-table td:last-child{color:var(--text)}
+.term-table tbody tr:hover td{background:rgba(255,255,255,.02)}
+
+/* ── ARCH DIAGRAM ── */
+.arch-diagram{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:24px;margin:20px 0;font-family:var(--mono);font-size:12px;overflow-x:auto}
+.arch-row{display:flex;align-items:center;gap:0;margin:8px 0}
+.arch-box{background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:6px 12px;white-space:nowrap;font-size:11px;font-weight:500}
+.arch-box.orange{border-color:var(--orange-border);color:var(--orange);background:var(--orange-dim)}
+.arch-box.blue{border-color:rgba(58,141,222,.35);color:var(--blue);background:var(--blue-dim)}
+.arch-box.green{border-color:rgba(39,196,122,.35);color:var(--green);background:var(--green-dim)}
+.arch-box.muted{color:var(--muted)}
+.arch-arrow{color:var(--muted);padding:0 8px;font-size:14px}
+
+/* ── COMPONENT CARDS ── */
+.comp-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:16px 0}
+.comp-card{background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:14px}
+.comp-card:hover{border-color:var(--border2)}
+.comp-num{font-family:var(--mono);font-size:10px;color:var(--muted);margin-bottom:6px}
+.comp-name{font-size:13px;font-weight:600;color:var(--white);margin-bottom:6px}
+.comp-desc{font-size:12px;color:var(--muted);line-height:1.6}
+.comp-tag{display:inline-block;font-family:var(--mono);font-size:9px;padding:2px 6px;border-radius:2px;margin-top:8px}
+.ct-orange{background:var(--orange-dim);color:var(--orange)}
+.ct-blue{background:var(--blue-dim);color:var(--blue)}
+.ct-green{background:var(--green-dim);color:var(--green)}
+.ct-purple{background:rgba(139,92,246,.12);color:var(--purple)}
+.ct-amber{background:rgba(255,179,71,.12);color:var(--amber)}
+
+/* ── CODE BLOCK ── */
+.code-block{background:#050810;border:1px solid var(--border);border-radius:6px;overflow:hidden;margin:14px 0}
+.code-header{background:var(--surface);padding:8px 14px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border)}
+.code-lang{font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+.code-body{padding:16px;font-family:var(--mono);font-size:12px;line-height:1.8;color:#8eb4e3;overflow-x:auto;white-space:pre}
+.code-body .co{color:var(--muted)}
+.code-body .kw{color:var(--orange)}
+.code-body .st{color:var(--green)}
+.code-body .cm{color:#3a5070;font-style:italic}
+
+/* ── CALLOUT ── */
+.callout{border-radius:6px;padding:14px 16px;margin:16px 0;display:flex;gap:12px;align-items:flex-start}
+.callout-icon{font-size:16px;flex-shrink:0;margin-top:1px}
+.callout-text{font-size:13px;line-height:1.65}
+.callout-text strong{display:block;margin-bottom:4px}
+.cl-orange{background:rgba(255,98,48,.07);border:1px solid var(--orange-border)}
+.cl-blue{background:var(--blue-dim);border:1px solid rgba(58,141,222,.25)}
+.cl-green{background:var(--green-dim);border:1px solid rgba(39,196,122,.25)}
+
+/* ── WARROOM DEMO ── */
+.warroom{background:#050810;border:1px solid var(--border);border-radius:8px;overflow:hidden;margin:16px 0}
+.wr-titlebar{background:var(--surface);border-bottom:1px solid var(--border);padding:10px 14px;display:flex;align-items:center;gap:8px}
+.wr-dots{display:flex;gap:5px}
+.wr-dot{width:10px;height:10px;border-radius:50%}
+.wr-title{font-family:var(--mono);font-size:11px;color:var(--muted);margin-left:6px}
+.wr-body{padding:16px;font-family:var(--mono);font-size:12px;line-height:2}
+.wr-line{display:flex;gap:10px}
+.wr-time{color:var(--muted);flex-shrink:0;min-width:50px}
+.wr-icon{flex-shrink:0}
+.wr-msg.bot{color:#8eb4e3}
+.wr-msg.analyst{color:var(--green)}
+.wr-msg.system{color:var(--orange)}
+.wr-input{border-top:1px solid var(--border);padding:10px 14px;display:flex;align-items:center;gap:8px}
+.wr-prompt{color:var(--orange);font-family:var(--mono);font-size:12px}
+.wr-cursor{display:inline-block;width:8px;height:14px;background:var(--orange);animation:blink 1s step-end infinite;vertical-align:middle;margin-left:2px}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+
+/* ── QUIZ ── */
+.quiz-wrap{margin-top:8px}
+.quiz-q{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:20px;margin-bottom:16px}
+.quiz-num{font-family:var(--mono);font-size:10px;color:var(--muted);margin-bottom:8px}
+.quiz-question{font-size:14px;font-weight:600;color:var(--white);margin-bottom:16px;line-height:1.5}
+.quiz-options{display:flex;flex-direction:column;gap:8px}
+.quiz-opt{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:10px 14px;cursor:pointer;font-size:13px;color:var(--text);transition:all .15s;text-align:left;width:100%}
+.quiz-opt:hover{border-color:var(--border2);background:var(--surface2)}
+.quiz-opt.selected{border-color:var(--orange-border);background:var(--orange-dim);color:var(--white)}
+.quiz-opt.correct{border-color:rgba(39,196,122,.5);background:rgba(39,196,122,.1);color:var(--green)}
+.quiz-opt.wrong{border-color:rgba(239,68,68,.4);background:rgba(239,68,68,.08);color:#ef4444}
+.quiz-feedback{margin-top:12px;padding:10px 14px;border-radius:6px;font-size:12px;display:none}
+.qf-correct{background:var(--green-dim);border:1px solid rgba(39,196,122,.3);color:var(--green)}
+.qf-wrong{background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.3);color:#ef8888}
+.quiz-score{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:24px;text-align:center;display:none}
+.score-num{font-size:48px;font-weight:800;color:var(--orange);font-family:var(--mono);margin-bottom:4px}
+.score-label{font-size:13px;color:var(--muted);margin-bottom:16px}
+.score-msg{font-size:14px;color:var(--text)}
+
+/* ── LAB CHECKLIST ── */
+.lab-card{background:var(--surface2);border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:16px}
+.lab-header{background:rgba(255,98,48,.06);border-bottom:1px solid var(--border);padding:14px 18px;display:flex;align-items:center;gap:10px}
+.lab-title{font-size:14px;font-weight:600;color:var(--white)}
+.lab-badge{font-family:var(--mono);font-size:10px;background:var(--orange-dim);color:var(--orange);border:1px solid var(--orange-border);padding:2px 8px;border-radius:2px;margin-left:auto}
+.lab-body{padding:16px 18px}
+.check-item{display:flex;align-items:flex-start;gap:12px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.04);cursor:pointer}
+.check-item:last-child{border-bottom:none}
+.check-item:hover .check-box{border-color:var(--orange)}
+.check-box{width:18px;height:18px;border:1.5px solid var(--border2);border-radius:3px;flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:all .15s;margin-top:1px}
+.check-item.checked .check-box{background:var(--orange);border-color:var(--orange)}
+.check-tick{color:var(--bg);font-size:11px;display:none;font-weight:700}
+.check-item.checked .check-tick{display:block}
+.check-item.checked .check-label{color:var(--muted);text-decoration:line-through}
+.check-label{font-size:13px;color:var(--text);line-height:1.5}
+.check-label strong{display:block;color:var(--white);margin-bottom:2px;font-weight:600}
+.check-label small{display:block;color:var(--muted);font-size:11px;margin-top:2px}
+
+/* ── NAV BUTTONS ── */
+.lesson-nav{display:flex;justify-content:space-between;align-items:center;margin-top:40px;padding-top:24px;border-top:1px solid var(--border)}
+.nav-btn{display:flex;align-items:center;gap:8px;padding:10px 20px;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:13px;font-weight:500;cursor:pointer;transition:all .15s}
+.nav-btn:hover{border-color:var(--border2);color:var(--white)}
+.nav-btn.primary{background:var(--orange);border-color:var(--orange);color:#fff}
+.nav-btn.primary:hover{background:#e5572a}
+.nav-btn:disabled{opacity:.3;cursor:not-allowed}
+
+/* ── GLOSSARY ── */
+.glossary-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+.gloss-item{background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:12px}
+.gloss-term{font-family:var(--mono);font-size:11px;color:var(--orange);font-weight:600;margin-bottom:4px}
+.gloss-def{font-size:12px;color:var(--muted);line-height:1.5}
+
+/* ── KEY POINT ── */
+.key-point{background:var(--surface2);border:1px solid var(--border2);border-radius:6px;padding:14px 16px;margin:14px 0;display:flex;gap:12px}
+.kp-icon{font-size:18px;flex-shrink:0}
+.kp-text{font-size:13px;color:var(--text);line-height:1.65}
+
+@media(max-width:700px){
+  .sidebar{display:none}
+  .main{padding:24px 20px}
+  .comp-grid{grid-template-columns:1fr}
+  .glossary-grid{grid-template-columns:1fr}
+  .progress-track{width:80px}
+}
+</style>
+</head>
+<body>
+
+<!-- ── TOP BAR ── -->
+<div class="topbar">
+  <span class="topbar-brand">CORTEX XSOAR</span>
+  <div class="topbar-sep"></div>
+  <span class="topbar-title">Week 1 · Day 1 — SOAR Fundamentals</span>
+  <div class="progress-wrap">
+    <span class="progress-label">Progress</span>
+    <div class="progress-track"><div class="progress-fill" id="progressFill" style="width:20%"></div></div>
+    <span class="lesson-count" id="lessonCount">1 / 5</span>
+  </div>
+</div>
+
+<div class="layout">
+
+<!-- ── SIDEBAR ── -->
+<nav class="sidebar">
+  <div class="sidebar-section">
+    <div class="sidebar-label">Day 1 Lessons</div>
+    <button class="nav-item active" onclick="goTo(0)" id="nav0">
+      <div class="nav-icon ni-orange">🛡️</div>
+      <span class="nav-text">What is SOAR?</span>
+      <div class="nav-dot"></div>
+    </button>
+    <button class="nav-item" onclick="goTo(1)" id="nav1">
+      <div class="nav-icon ni-blue">⚙️</div>
+      <span class="nav-text">XSOAR Architecture</span>
+      <div class="nav-dot"></div>
+    </button>
+    <button class="nav-item" onclick="goTo(2)" id="nav2">
+      <div class="nav-icon ni-purple">⚔️</div>
+      <span class="nav-text">The War Room</span>
+      <div class="nav-dot"></div>
+    </button>
+    <button class="nav-item" onclick="goTo(3)" id="nav3">
+      <div class="nav-icon ni-amber">🧠</div>
+      <span class="nav-text">Knowledge Check</span>
+      <div class="nav-dot"></div>
+    </button>
+    <button class="nav-item" onclick="goTo(4)" id="nav4">
+      <div class="nav-icon ni-green">🔬</div>
+      <span class="nav-text">Lab Tasks</span>
+      <div class="nav-dot"></div>
+    </button>
+  </div>
+  <div style="padding:16px;border-top:1px solid var(--border);margin-top:auto">
+    <div style="font-family:var(--mono);font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px">Day Info</div>
+    <div style="font-size:11px;color:var(--muted);line-height:1.8">
+      📅 Week 1, Day 1<br>
+      ⏱️ ~2 hours<br>
+      🎯 3 Lessons + Lab<br>
+      📋 No prerequisites
+    </div>
+  </div>
+</nav>
+
+<!-- ── MAIN ── -->
+<main class="main">
+
+  <!-- ════════════════════
+       LESSON 1: WHAT IS SOAR
+  ════════════════════ -->
+  <div class="lesson-panel active" id="panel0">
+    <div class="lesson-hero">
+      <div class="lesson-eyebrow">
+        <span class="eyebrow-tag et-orange">Lesson 1 of 3</span>
+        <span class="lesson-num">// SOAR Fundamentals</span>
+      </div>
+      <h1 class="lesson-title">What is SOAR — and Why Does Your SOC Need It?</h1>
+      <p class="lesson-subtitle">Understanding the core problem SOAR solves before touching the platform.</p>
+    </div>
+
+    <div class="obj-box">
+      <div class="obj-label">Learning Objectives</div>
+      <ul class="obj-list">
+        <li>Explain what SOAR stands for and what problem it solves</li>
+        <li>Distinguish between Orchestration, Automation, and Response</li>
+        <li>Map your own SOC pain points to SOAR capabilities</li>
+      </ul>
+    </div>
+
+    <h2 class="content-h2">The Problem: Your Analysts Are Copy-Pasting Their Day Away</h2>
+    <p class="content-p">As a SOC Manager you already know this pain. A phishing alert fires at 2am. Here's what your analyst actually does — and what XSOAR does instead:</p>
+
+    <div class="scenario">
+      <div class="scenario-header">
+        <div class="scenario-icon">📧</div>
+        <div>
+          <div class="scenario-title">Scenario: Phishing Alert at 2:00 AM</div>
+          <div class="scenario-sub">45 minutes manually · 90 seconds with XSOAR</div>
+        </div>
+      </div>
+      <ul class="flow-list">
+        <li>
+          <div class="flow-step fs-manual">1</div>
+          <div class="flow-text">Open the alert in SIEM, copy the sender email address <span class="pain-tag">manual</span></div>
+        </li>
+        <li>
+          <div class="flow-step fs-auto">2</div>
+          <div class="flow-text"><s>Google the sender → check VirusTotal manually</s> → <strong style="color:var(--green)">XSOAR queries VT automatically</strong> <span class="auto-tag">automated</span></div>
+        </li>
+        <li>
+          <div class="flow-step fs-auto">3</div>
+          <div class="flow-text"><s>Open AbuseIPDB → check source IP</s> → <strong style="color:var(--green)">XSOAR enriches IP in parallel</strong> <span class="auto-tag">automated</span></div>
+        </li>
+        <li>
+          <div class="flow-step fs-auto">4</div>
+          <div class="flow-text"><s>Check proxy logs — did the user click?</s> → <strong style="color:var(--green)">XSOAR queries proxy via integration</strong> <span class="auto-tag">automated</span></div>
+        </li>
+        <li>
+          <div class="flow-step fs-auto">5</div>
+          <div class="flow-text"><s>Check EDR — was anything executed?</s> → <strong style="color:var(--green)">XSOAR queries EDR, flags host if hit</strong> <span class="auto-tag">automated</span></div>
+        </li>
+        <li>
+          <div class="flow-step fs-auto">6</div>
+          <div class="flow-text"><s>Write up notes in the ticket</s> → <strong style="color:var(--green)">War Room auto-logs everything</strong> <span class="auto-tag">automated</span></div>
+        </li>
+        <li>
+          <div class="flow-step fs-manual">7</div>
+          <div class="flow-text">Analyst reviews consolidated results → <strong style="color:var(--white)">makes the final call</strong> <span class="pain-tag">human decision</span></div>
+        </li>
+      </ul>
+    </div>
+
+    <div class="callout cl-orange">
+      <div class="callout-icon">💡</div>
+      <div class="callout-text">
+        <strong>Your exact pain point: OSINT enrichment</strong>
+        Manually querying VirusTotal, AbuseIPDB, Shodan, and URLScan for every alert is what XSOAR eliminates first. By Week 3 you will have automated exactly this.
+      </div>
+    </div>
+
+    <h2 class="content-h2">The 3 Words in "SOAR" — What Each Actually Means</h2>
+    <table class="term-table">
+      <thead>
+        <tr><th>Term</th><th>Plain English Definition</th><th>SOC Example</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Orchestration</td>
+          <td>Making different tools talk to each other automatically</td>
+          <td>SIEM sends alert → XSOAR queries EDR + Firewall + Proxy together</td>
+        </tr>
+        <tr>
+          <td>Automation</td>
+          <td>Running tasks without a human doing them manually</td>
+          <td>VirusTotal check, IP lookup, Jira ticket creation — all happen on their own</td>
+        </tr>
+        <tr>
+          <td>Response</td>
+          <td>Taking action — blocking, isolating, notifying</td>
+          <td>Block IP on firewall, isolate host on EDR, notify user via email — all triggered automatically</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2 class="content-h2">Where XSOAR Sits in Your SOC</h2>
+    <div class="arch-diagram">
+      <div style="color:var(--muted);font-size:10px;margin-bottom:14px;letter-spacing:.08em">XSOAR AS THE SOC BRAIN — CONNECTING ALL YOUR TOOLS</div>
+      <div class="arch-row" style="margin-bottom:6px">
+        <div style="display:flex;flex-direction:column;gap:6px;min-width:120px">
+          <div class="arch-box muted">SIEM</div>
+          <div class="arch-box muted">EDR</div>
+          <div class="arch-box muted">Email Gateway</div>
+          <div class="arch-box muted">Threat Intel</div>
+        </div>
+        <div style="display:flex;flex-direction:column;justify-content:center;padding:0 16px;color:var(--muted);font-size:18px;gap:6px">
+          <div>──►</div>
+          <div>──►</div>
+          <div>──►</div>
+          <div>──►</div>
+        </div>
+        <div style="display:flex;align-items:center">
+          <div class="arch-box orange" style="padding:28px 20px;font-size:14px;font-weight:700">CORTEX<br>XSOAR</div>
+        </div>
+        <div style="display:flex;flex-direction:column;justify-content:center;padding:0 16px;color:var(--muted);font-size:18px;gap:6px">
+          <div>──►</div>
+          <div>──►</div>
+          <div>──►</div>
+          <div>──►</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px;min-width:140px">
+          <div class="arch-box green">Block on Firewall</div>
+          <div class="arch-box green">Quarantine Host</div>
+          <div class="arch-box green">Create Jira Ticket</div>
+          <div class="arch-box green">Notify User</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="key-point">
+      <div class="kp-icon">🎯</div>
+      <div class="kp-text">XSOAR does not replace your SIEM, EDR, or firewall. It connects them all and runs your runbooks automatically between them. Think of it as the brain in the middle — your tools are the hands and eyes.</div>
+    </div>
+
+    <div class="lesson-nav">
+      <button class="nav-btn" disabled>← Previous</button>
+      <button class="nav-btn primary" onclick="goTo(1)">Next: XSOAR Architecture →</button>
+    </div>
+  </div>
+
+
+  <!-- ════════════════════
+       LESSON 2: ARCHITECTURE
+  ════════════════════ -->
+  <div class="lesson-panel" id="panel1">
+    <div class="lesson-hero">
+      <div class="lesson-eyebrow">
+        <span class="eyebrow-tag et-blue">Lesson 2 of 3</span>
+        <span class="lesson-num">// Platform Architecture</span>
+      </div>
+      <h1 class="lesson-title">XSOAR Architecture — 5 Things You Must Know</h1>
+      <p class="lesson-subtitle">Before installing anything, build a mental model of how XSOAR is structured.</p>
+    </div>
+
+    <div class="obj-box" style="border-left-color:var(--blue)">
+      <div class="obj-label" style="color:var(--blue)">Learning Objectives</div>
+      <ul class="obj-list">
+        <li>Name the 5 core components of XSOAR and what each does</li>
+        <li>Understand how data flows from alert → integration → playbook → action</li>
+        <li>Navigate the XSOAR UI and locate: Incidents, Playground, Marketplace</li>
+      </ul>
+    </div>
+
+    <h2 class="content-h2">The 5 Core Components</h2>
+
+    <div class="comp-grid">
+      <div class="comp-card">
+        <div class="comp-num">COMPONENT 01</div>
+        <div class="comp-name">🖥️ The Server</div>
+        <div class="comp-desc">The core brain. Hosts the UI, stores all incidents and indicators, runs playbooks, and manages all integrations. Everything lives and runs here.</div>
+        <span class="comp-tag ct-orange">Always required</span>
+      </div>
+      <div class="comp-card">
+        <div class="comp-num">COMPONENT 02</div>
+        <div class="comp-name">⚡ Engines</div>
+        <div class="comp-desc">Remote workers. If your XSOAR server is cloud-based but your SIEM is on-prem behind a firewall, an Engine sits on-prem and acts as a secure relay. No firewall changes needed.</div>
+        <span class="comp-tag ct-blue">For hybrid environments</span>
+      </div>
+      <div class="comp-card">
+        <div class="comp-num">COMPONENT 03</div>
+        <div class="comp-name">🔌 Integrations</div>
+        <div class="comp-desc">API connections to external tools — VirusTotal, Splunk, CrowdStrike, Jira, Slack. Each integration exposes commands you call inside playbooks. Configure once, use everywhere.</div>
+        <span class="comp-tag ct-purple">API connection wrappers</span>
+      </div>
+      <div class="comp-card">
+        <div class="comp-num">COMPONENT 04</div>
+        <div class="comp-name">📋 Playbooks</div>
+        <div class="comp-desc">Your automated runbooks. Visual drag-and-drop logic flows. If an alert comes in → run these steps in this order → make these decisions. This is where you'll spend most of your time.</div>
+        <span class="comp-tag ct-green">Your main output</span>
+      </div>
+      <div class="comp-card" style="grid-column:1/-1">
+        <div class="comp-num">COMPONENT 05</div>
+        <div class="comp-name">🛒 Marketplace</div>
+        <div class="comp-desc">XSOAR's app store. 700+ pre-built integrations and playbooks — VirusTotal, MISP, PAN-OS, CrowdStrike, Jira, Slack, and hundreds more. Most are free to install in minutes instead of building from scratch.</div>
+        <span class="comp-tag ct-amber">700+ ready-made integrations</span>
+      </div>
+    </div>
+
+    <h2 class="content-h2">How Everything Connects — The Data Flow</h2>
+
+    <div class="arch-diagram">
+      <div style="color:var(--muted);font-size:10px;margin-bottom:16px;letter-spacing:.08em">FROM MARKETPLACE CONTENT TO AUTOMATED RESPONSE</div>
+      <div style="display:flex;align-items:center;flex-wrap:wrap;gap:4px;line-height:2.2">
+        <div class="arch-box orange">Marketplace</div>
+        <div class="arch-arrow">──►</div>
+        <div class="arch-box blue">Install Integration</div>
+        <div class="arch-arrow">──►</div>
+        <div class="arch-box blue">Exposes Commands</div>
+        <br style="width:100%">
+        <div style="width:100%;height:6px"></div>
+        <div class="arch-box blue">Commands</div>
+        <div class="arch-arrow">──►</div>
+        <div class="arch-box orange">Used in Playbooks</div>
+        <div class="arch-arrow">──►</div>
+        <div class="arch-box green">Triggered by Incidents</div>
+        <br style="width:100%">
+        <div style="width:100%;height:6px"></div>
+        <div class="arch-box green">Incidents</div>
+        <div class="arch-arrow">──►</div>
+        <div class="arch-box muted">Created from SIEM / EDR alerts</div>
+      </div>
+    </div>
+
+    <h2 class="content-h2">Your OSINT Enrichment — How It Maps to Architecture</h2>
+    <p class="content-p">Here's your exact pain point mapped to XSOAR components:</p>
+
+    <div class="code-block">
+      <div class="code-header">
+        <span class="code-lang">XSOAR — OSINT Enrichment Flow</span>
+      </div>
+      <div class="code-body"><span class="cm"># Step 1: Marketplace → install these integrations</span>
+VirusTotal integration    <span class="kw">→</span>  exposes  <span class="st">!vt-get-ip-report</span>
+AbuseIPDB integration     <span class="kw">→</span>  exposes  <span class="st">!abuseipdb-check-ip</span>
+Shodan integration        <span class="kw">→</span>  exposes  <span class="st">!shodan-search</span>
+URLScan integration       <span class="kw">→</span>  exposes  <span class="st">!urlscan-submit-url</span>
+
+<span class="cm"># Step 2: Playbook calls all 4 commands in parallel</span>
+<span class="kw">Alert fires</span> → Playbook runs → <span class="st">all 4 queries execute simultaneously</span>
+
+<span class="cm"># Step 3: Results land in the incident automatically</span>
+Analyst sees: consolidated enrichment report in War Room
+              no browser tabs opened
+              no copy-paste done</div>
+    </div>
+
+    <h2 class="content-h2">The 3 UI Areas to Find Today</h2>
+    <table class="term-table">
+      <thead>
+        <tr><th>UI Area</th><th>Where to Find It</th><th>What It's For</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Incidents</td>
+          <td>Left sidebar → alert bell icon</td>
+          <td>Where all alerts land and get worked by analysts</td>
+        </tr>
+        <tr>
+          <td>Playground</td>
+          <td>Top nav bar → &lt;/&gt; icon or "CLI" label</td>
+          <td>Sandbox to test commands safely — nothing here affects real incidents</td>
+        </tr>
+        <tr>
+          <td>Marketplace</td>
+          <td>Top right → grid/store icon</td>
+          <td>Browse and install 700+ integrations and playbooks</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="callout cl-blue">
+      <div class="callout-icon">🔍</div>
+      <div class="callout-text">
+        <strong>Quick task right now</strong>
+        If your instance is running — go to Marketplace and search "VirusTotal". Don't install yet. Just look at the list of commands it exposes (like <code style="background:rgba(0,0,0,.3);padding:2px 5px;border-radius:3px;font-family:var(--mono)">!vt-get-ip-report</code>). Those are what you'll drag into your first playbook.
+      </div>
+    </div>
+
+    <div class="lesson-nav">
+      <button class="nav-btn" onclick="goTo(0)">← What is SOAR?</button>
+      <button class="nav-btn primary" onclick="goTo(2)">Next: The War Room →</button>
+    </div>
+  </div>
+
+
+  <!-- ════════════════════
+       LESSON 3: WAR ROOM
+  ════════════════════ -->
+  <div class="lesson-panel" id="panel2">
+    <div class="lesson-hero">
+      <div class="lesson-eyebrow">
+        <span class="eyebrow-tag et-purple">Lesson 3 of 3</span>
+        <span class="lesson-num">// War Room</span>
+      </div>
+      <h1 class="lesson-title">The War Room — XSOAR's Most Unique Feature</h1>
+      <p class="lesson-subtitle">Every incident has a live, automatic audit trail. Nothing else in the SOC works like this.</p>
+    </div>
+
+    <div class="obj-box" style="border-left-color:var(--purple)">
+      <div class="obj-label" style="color:var(--purple)">Learning Objectives</div>
+      <ul class="obj-list">
+        <li>Understand what the War Room is and what gets logged automatically</li>
+        <li>Know how to run commands directly inside the War Room</li>
+        <li>Understand why this matters for analyst workflow and audit trails</li>
+      </ul>
+    </div>
+
+    <h2 class="content-h2">What Is the War Room?</h2>
+    <p class="content-p">Every incident in XSOAR has its own War Room — a live, chronological log of everything that happens during investigation. Think of it as three things combined into one:</p>
+
+    <div class="comp-grid" style="grid-template-columns:1fr 1fr 1fr">
+      <div class="comp-card">
+        <div class="comp-name">💬 Group Chat</div>
+        <div class="comp-desc">Analysts can post comments, observations, and decisions directly in the incident thread</div>
+      </div>
+      <div class="comp-card">
+        <div class="comp-name">📜 Audit Log</div>
+        <div class="comp-desc">Every automated action is timestamped and recorded — no one needs to write a report</div>
+      </div>
+      <div class="comp-card">
+        <div class="comp-name">⌨️ Command Terminal</div>
+        <div class="comp-desc">Type commands directly to query tools live, right inside the incident context</div>
+      </div>
+    </div>
+
+    <h2 class="content-h2">What a Real War Room Looks Like</h2>
+    <div class="warroom">
+      <div class="wr-titlebar">
+        <div class="wr-dots">
+          <div class="wr-dot" style="background:#ef4444"></div>
+          <div class="wr-dot" style="background:#f59e0b"></div>
+          <div class="wr-dot" style="background:#22c55e"></div>
+        </div>
+        <span class="wr-title">War Room — INC-2041: Phishing Alert · user@company.com</span>
+      </div>
+      <div class="wr-body">
+        <div class="wr-line"><span class="wr-time">09:14</span><span class="wr-icon">🤖</span><span class="wr-msg bot">&nbsp;Playbook started: Phishing Investigation v2.1</span></div>
+        <div class="wr-line"><span class="wr-time">09:14</span><span class="wr-icon">🤖</span><span class="wr-msg bot">&nbsp;VirusTotal query: 185.220.101.45 → <span style="color:var(--red)">MALICIOUS</span> (score 8/10, 12 engines flagged)</span></div>
+        <div class="wr-line"><span class="wr-time">09:14</span><span class="wr-icon">🤖</span><span class="wr-msg bot">&nbsp;AbuseIPDB: 47 abuse reports in last 30 days — Category: Phishing</span></div>
+        <div class="wr-line"><span class="wr-time">09:14</span><span class="wr-icon">🤖</span><span class="wr-msg bot">&nbsp;Shodan: Port 443, 80 open — hosting known phishing kit</span></div>
+        <div class="wr-line"><span class="wr-time">09:15</span><span class="wr-icon">👤</span><span class="wr-msg analyst">&nbsp;User confirmed they clicked the link at 09:02 AM</span></div>
+        <div class="wr-line"><span class="wr-time">09:15</span><span class="wr-icon">🤖</span><span class="wr-msg bot">&nbsp;Playbook: Sent password reset notification to user@company.com</span></div>
+        <div class="wr-line"><span class="wr-time">09:15</span><span class="wr-icon">🤖</span><span class="wr-msg bot">&nbsp;Firewall: IP 185.220.101.45 blocked on PAN-OS edge rule #4421</span></div>
+        <div class="wr-line"><span class="wr-time">09:16</span><span class="wr-icon">👤</span><span class="wr-msg analyst">&nbsp;Escalating to IR team — credential compromise confirmed</span></div>
+        <div class="wr-line"><span class="wr-time">09:16</span><span class="wr-icon">🤖</span><span class="wr-msg bot">&nbsp;Jira ticket created: IR-441 — assigned to incident-response@company.com</span></div>
+        <div class="wr-line"><span class="wr-time">09:16</span><span class="wr-icon">🟠</span><span class="wr-msg system">&nbsp;Severity escalated: Medium → High</span></div>
+      </div>
+      <div class="wr-input">
+        <span class="wr-prompt">$&gt;</span>
+        <span style="color:var(--text);font-family:var(--mono);font-size:12px">!ip ip=185.220.101.45</span>
+        <div class="wr-cursor"></div>
+      </div>
+    </div>
+
+    <h2 class="content-h2">Why This Matters for You as SOC Manager</h2>
+    <table class="term-table">
+      <thead>
+        <tr><th>Before XSOAR</th><th>With War Room</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td style="color:var(--red)">Chase analysts to document what they did</td>
+          <td style="color:var(--green)">Every action auto-logged with timestamp</td>
+        </tr>
+        <tr>
+          <td style="color:var(--red)">Audit trails are incomplete or missing</td>
+          <td style="color:var(--green)">Perfect chronological record, always</td>
+        </tr>
+        <tr>
+          <td style="color:var(--red)">Analyst opens 6 browser tabs to enrich</td>
+          <td style="color:var(--green)">Results appear inside the incident</td>
+        </tr>
+        <tr>
+          <td style="color:var(--red)">No visibility into what happened during investigation</td>
+          <td style="color:var(--green)">Replay exact investigation step by step</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2 class="content-h2">Your First War Room Command</h2>
+    <p class="content-p">The War Room has a command line at the bottom. You can run integration commands directly here — the results appear in the incident context immediately.</p>
+
+    <div class="code-block">
+      <div class="code-header"><span class="code-lang">War Room — Command Line</span></div>
+      <div class="code-body"><span class="cm"># Query IP reputation from War Room directly</span>
+!ip ip=8.8.8.8
+
+<span class="cm"># Query VirusTotal for a file hash</span>
+!vt-get-file-report file=<span class="st">"abc123def456..."</span>
+
+<span class="cm"># Check indicator in AbuseIPDB</span>
+!abuseipdb-check-ip ip=<span class="st">"185.220.101.45"</span>
+
+<span class="cm"># Note: if no integration is configured you'll see</span>
+<span class="cm"># "No integration found" — that's expected on Day 1</span></div>
+    </div>
+
+    <div class="callout cl-green">
+      <div class="callout-icon">✅</div>
+      <div class="callout-text">
+        <strong>Lesson 3 Complete — You now know all 3 core Day 1 concepts</strong>
+        SOAR solves manual enrichment → XSOAR connects your tools via Integrations + Playbooks → War Room gives you automatic audit trails and a live command line. Take the knowledge check to confirm before the lab.
+      </div>
+    </div>
+
+    <div class="lesson-nav">
+      <button class="nav-btn" onclick="goTo(1)">← XSOAR Architecture</button>
+      <button class="nav-btn primary" onclick="goTo(3)">Knowledge Check →</button>
+    </div>
+  </div>
+
+
+  <!-- ════════════════════
+       QUIZ
+  ════════════════════ -->
+  <div class="lesson-panel" id="panel3">
+    <div class="lesson-hero">
+      <div class="lesson-eyebrow">
+        <span class="eyebrow-tag et-amber">Knowledge Check</span>
+        <span class="lesson-num">// 5 Questions</span>
+      </div>
+      <h1 class="lesson-title">Test What You've Learned</h1>
+      <p class="lesson-subtitle">No tricks — this is to confirm understanding before the lab. Select one answer per question.</p>
+    </div>
+
+    <div class="quiz-wrap" id="quizWrap">
+
+      <div class="quiz-q" id="q0">
+        <div class="quiz-num">Question 1 of 5</div>
+        <div class="quiz-question">Your analyst spends 40 minutes manually querying VirusTotal, AbuseIPDB, and Shodan for every alert. Which SOAR capability eliminates this specific pain?</div>
+        <div class="quiz-options">
+          <button class="quiz-opt" onclick="answer(0,0,1)">A. Response — XSOAR takes blocking action automatically</button>
+          <button class="quiz-opt" onclick="answer(0,1,1)">B. Automation — XSOAR queries all three tools automatically without analyst doing it</button>
+          <button class="quiz-opt" onclick="answer(0,2,1)">C. Orchestration — XSOAR connects SIEM to the firewall</button>
+          <button class="quiz-opt" onclick="answer(0,3,1)">D. Integration — XSOAR installs an app from the Marketplace</button>
+        </div>
+        <div class="quiz-feedback qf-correct" id="qf0-correct">✓ Correct! Automation means tasks run without a human doing them manually. Your OSINT enrichment workflow is a perfect automation use case — XSOAR queries all sources simultaneously, in seconds.</div>
+        <div class="quiz-feedback qf-wrong" id="qf0-wrong">✗ Not quite. Response is about taking action (block, isolate, notify). Orchestration is about connecting tools together. What you're describing — queries running without a human doing them — is Automation.</div>
+      </div>
+
+      <div class="quiz-q" id="q1">
+        <div class="quiz-num">Question 2 of 5</div>
+        <div class="quiz-question">You want XSOAR to query the VirusTotal API when a phishing alert fires. Which XSOAR component wraps the VirusTotal API and exposes it as a command you can use in a playbook?</div>
+        <div class="quiz-options">
+          <button class="quiz-opt" onclick="answer(1,0,2)">A. Playbook</button>
+          <button class="quiz-opt" onclick="answer(1,1,2)">B. Engine</button>
+          <button class="quiz-opt" onclick="answer(1,2,2)">C. Integration</button>
+          <button class="quiz-opt" onclick="answer(1,3,2)">D. War Room</button>
+        </div>
+        <div class="quiz-feedback qf-correct" id="qf1-correct">✓ Correct! An Integration is the API connection wrapper. You configure it once with your API key, and it exposes commands like <code style="font-family:var(--mono);background:rgba(0,0,0,.3);padding:1px 4px">!vt-get-ip-report</code> that any playbook can call.</div>
+        <div class="quiz-feedback qf-wrong" id="qf1-wrong">✗ Close — a Playbook uses integrations but isn't the connection itself. An Engine is for on-prem relay. The War Room is the investigation log. The component that wraps an API is an Integration.</div>
+      </div>
+
+      <div class="quiz-q" id="q2">
+        <div class="quiz-num">Question 3 of 5</div>
+        <div class="quiz-question">Your XSOAR server is cloud-hosted. Your SIEM is on-premises behind a strict firewall with no inbound rules. How does XSOAR still query your SIEM?</div>
+        <div class="quiz-options">
+          <button class="quiz-opt" onclick="answer(2,0,1)">A. XSOAR cannot — it requires direct network access to all tools</button>
+          <button class="quiz-opt" onclick="answer(2,1,1)">B. An Engine installed on-premises acts as a secure relay between XSOAR and the SIEM</button>
+          <button class="quiz-opt" onclick="answer(2,2,1)">C. The Marketplace provides a special firewall bypass integration</button>
+          <button class="quiz-opt" onclick="answer(2,3,1)">D. XSOAR uses the War Room to tunnel through the firewall</button>
+        </div>
+        <div class="quiz-feedback qf-correct" id="qf2-correct">✓ Correct! An Engine sits on-premises and acts as a relay. The XSOAR cloud server sends instructions to the Engine, which executes them locally and sends results back. No inbound firewall rules needed.</div>
+        <div class="quiz-feedback qf-wrong" id="qf2-wrong">✗ The answer is an Engine — a remote worker installed on-premises that acts as a secure relay. The connection is outbound from the Engine to XSOAR, so no inbound firewall rules are required.</div>
+      </div>
+
+      <div class="quiz-q" id="q3">
+        <div class="quiz-num">Question 4 of 5</div>
+        <div class="quiz-question">A new analyst asks: "Where do I test commands before putting them into a live playbook?" Which XSOAR feature do you point them to?</div>
+        <div class="quiz-options">
+          <button class="quiz-opt" onclick="answer(3,0,2)">A. Incidents view</button>
+          <button class="quiz-opt" onclick="answer(3,1,2)">B. Marketplace</button>
+          <button class="quiz-opt" onclick="answer(3,2,2)">C. Playground</button>
+          <button class="quiz-opt" onclick="answer(3,3,2)">D. Settings</button>
+        </div>
+        <div class="quiz-feedback qf-correct" id="qf3-correct">✓ Correct! The Playground is a sandbox where analysts can run commands and test scripts safely. Nothing in the Playground affects real incidents. It's the equivalent of a staging environment for commands.</div>
+        <div class="quiz-feedback qf-wrong" id="qf3-wrong">✗ The Playground is the sandbox for safe command testing. The Incidents view is for real alerts. Marketplace is for installing content. Settings is for configuration. The Playground is your safe test environment.</div>
+      </div>
+
+      <div class="quiz-q" id="q4">
+        <div class="quiz-num">Question 5 of 5</div>
+        <div class="quiz-question">After a security incident is closed, your CISO asks for a full audit trail of everything that happened during the investigation. In XSOAR, where does this automatically live?</div>
+        <div class="quiz-options">
+          <button class="quiz-opt" onclick="answer(4,0,3)">A. A separate log file on the XSOAR server</button>
+          <button class="quiz-opt" onclick="answer(4,1,3)">B. The analyst's email thread</button>
+          <button class="quiz-opt" onclick="answer(4,2,3)">C. The Marketplace content history</button>
+          <button class="quiz-opt" onclick="answer(4,3,3)">D. The War Room — every automated and manual action is chronologically logged</button>
+        </div>
+        <div class="quiz-feedback qf-correct" id="qf4-correct">✓ Correct! The War Room automatically logs every action — playbook steps, integration queries, analyst comments, decisions — all timestamped. Your CISO gets a perfect audit trail with zero extra effort from the analyst.</div>
+        <div class="quiz-feedback qf-wrong" id="qf4-wrong">✗ The answer is the War Room. Every action — automated and manual — is timestamped and logged there automatically. No separate reporting tool needed. It's one of XSOAR's most valuable features for audit and compliance.</div>
+      </div>
+
+      <div class="quiz-score" id="quizScore">
+        <div class="score-num" id="scoreNum">0/5</div>
+        <div class="score-label">Day 1 Knowledge Check Complete</div>
+        <div class="score-msg" id="scoreMsg"></div>
+      </div>
+
+    </div>
+
+    <div class="lesson-nav">
+      <button class="nav-btn" onclick="goTo(2)">← The War Room</button>
+      <button class="nav-btn primary" onclick="goTo(4)">Lab Tasks →</button>
+    </div>
+  </div>
+
+
+  <!-- ════════════════════
+       LAB
+  ════════════════════ -->
+  <div class="lesson-panel" id="panel4">
+    <div class="lesson-hero">
+      <div class="lesson-eyebrow">
+        <span class="eyebrow-tag et-green">Day 1 Lab</span>
+        <span class="lesson-num">// Hands-on Tasks</span>
+      </div>
+      <h1 class="lesson-title">Lab: Your First XSOAR Incident</h1>
+      <p class="lesson-subtitle">Two tasks. No code yet. Just orientation — get comfortable with the platform before next session.</p>
+    </div>
+
+    <div class="obj-box" style="border-left-color:var(--green)">
+      <div class="obj-label" style="color:var(--green)">Prerequisites</div>
+      <ul class="obj-list">
+        <li>XSOAR instance running (cloud trial or local VM)</li>
+        <li>You can log in and see the dashboard</li>
+        <li>Estimated time: 30–45 minutes</li>
+      </ul>
+    </div>
+
+    <div class="lab-card">
+      <div class="lab-header">
+        <div class="lab-title">Task 1 — Create Your First Incident</div>
+        <div class="lab-badge">TASK 01</div>
+      </div>
+      <div class="lab-body">
+        <div class="check-item" onclick="toggleCheck(this)">
+          <div class="check-box"><span class="check-tick">✓</span></div>
+          <div class="check-label">
+            <strong>Go to Incidents in left sidebar</strong>
+            <small>Look for the bell/alert icon on the left navigation panel</small>
+          </div>
+        </div>
+        <div class="check-item" onclick="toggleCheck(this)">
+          <div class="check-box"><span class="check-tick">✓</span></div>
+          <div class="check-label">
+            <strong>Click "+ New Incident" button</strong>
+            <small>Usually top-right of the Incidents page</small>
+          </div>
+        </div>
+        <div class="check-item" onclick="toggleCheck(this)">
+          <div class="check-box"><span class="check-tick">✓</span></div>
+          <div class="check-label">
+            <strong>Fill in: Name = "Test - Phishing Alert"</strong>
+            <small>This is your first test incident</small>
+          </div>
+        </div>
+        <div class="check-item" onclick="toggleCheck(this)">
+          <div class="check-box"><span class="check-tick">✓</span></div>
+          <div class="check-label">
+            <strong>Set Type = Phishing, Severity = Medium</strong>
+            <small>These are dropdown fields in the incident creation form</small>
+          </div>
+        </div>
+        <div class="check-item" onclick="toggleCheck(this)">
+          <div class="check-box"><span class="check-tick">✓</span></div>
+          <div class="check-label">
+            <strong>Click Create — confirm it appears in the Incidents list</strong>
+            <small>You should see your new incident with status "Active"</small>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="lab-card">
+      <div class="lab-header">
+        <div class="lab-title">Task 2 — Explore the War Room</div>
+        <div class="lab-badge">TASK 02</div>
+      </div>
+      <div class="lab-body">
+        <div class="check-item" onclick="toggleCheck(this)">
+          <div class="check-box"><span class="check-tick">✓</span></div>
+          <div class="check-label">
+            <strong>Open your new incident</strong>
+            <small>Click on "Test - Phishing Alert" from the incidents list</small>
+          </div>
+        </div>
+        <div class="check-item" onclick="toggleCheck(this)">
+          <div class="check-box"><span class="check-tick">✓</span></div>
+          <div class="check-label">
+            <strong>Find the War Room tab</strong>
+            <small>Look for "War Room" in the tabs at the top of the incident view</small>
+          </div>
+        </div>
+        <div class="check-item" onclick="toggleCheck(this)">
+          <div class="check-box"><span class="check-tick">✓</span></div>
+          <div class="check-label">
+            <strong>Find the command input bar at the bottom</strong>
+            <small>It looks like a chat input or terminal prompt — usually has a $ or / symbol</small>
+          </div>
+        </div>
+        <div class="check-item" onclick="toggleCheck(this)">
+          <div class="check-box"><span class="check-tick">✓</span></div>
+          <div class="check-label">
+            <strong>Type: !ip ip=8.8.8.8 and press Enter</strong>
+            <small>Expected result: "No integration found for ip command" — this is normal on a fresh install</small>
+          </div>
+        </div>
+        <div class="check-item" onclick="toggleCheck(this)">
+          <div class="check-box"><span class="check-tick">✓</span></div>
+          <div class="check-label">
+            <strong>Notice the error is now logged in the War Room</strong>
+            <small>Even the error is timestamped and recorded — that's the audit trail working automatically</small>
+          </div>
+        </div>
+        <div class="check-item" onclick="toggleCheck(this)">
+          <div class="check-box"><span class="check-tick">✓</span></div>
+          <div class="check-label">
+            <strong>Bonus: Go to Marketplace, search "VirusTotal", note the commands it exposes</strong>
+            <small>Don't install yet — just browse. You'll configure this in Week 3</small>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="callout cl-orange">
+      <div class="callout-icon">🎯</div>
+      <div class="callout-text">
+        <strong>What to bring to next session</strong>
+        Come back and tell me: what did you see in the War Room after running <code style="font-family:var(--mono);background:rgba(0,0,0,.3);padding:2px 5px">!ip ip=8.8.8.8</code>? Even if it was just an error message — that's the right answer and tells us the command interface is working.
+      </div>
+    </div>
+
+    <h2 class="content-h2">Day 1 Glossary — Key Terms</h2>
+    <div class="glossary-grid">
+      <div class="gloss-item">
+        <div class="gloss-term">SOAR</div>
+        <div class="gloss-def">Security Orchestration, Automation and Response — platform category that XSOAR belongs to</div>
+      </div>
+      <div class="gloss-item">
+        <div class="gloss-term">Integration</div>
+        <div class="gloss-def">XSOAR's term for an API connection to an external tool (VT, SIEM, EDR, Slack, etc.)</div>
+      </div>
+      <div class="gloss-item">
+        <div class="gloss-term">Playbook</div>
+        <div class="gloss-def">Automated runbook — visual logic flow that runs tasks when an incident is triggered</div>
+      </div>
+      <div class="gloss-item">
+        <div class="gloss-term">War Room</div>
+        <div class="gloss-def">Per-incident live log — auto-records every action, command, and analyst note with timestamps</div>
+      </div>
+      <div class="gloss-item">
+        <div class="gloss-term">Engine</div>
+        <div class="gloss-def">On-prem relay worker that lets cloud-hosted XSOAR reach tools behind a firewall</div>
+      </div>
+      <div class="gloss-item">
+        <div class="gloss-term">Playground</div>
+        <div class="gloss-def">Sandbox environment for testing commands safely — nothing here affects live incidents</div>
+      </div>
+      <div class="gloss-item">
+        <div class="gloss-term">Marketplace</div>
+        <div class="gloss-def">XSOAR's app store — 700+ pre-built integrations and playbooks, most free to install</div>
+      </div>
+      <div class="gloss-item">
+        <div class="gloss-term">Incident</div>
+        <div class="gloss-def">XSOAR's core work unit — an alert becomes an incident, gets enriched, worked, and closed</div>
+      </div>
+    </div>
+
+    <div class="lesson-nav">
+      <button class="nav-btn" onclick="goTo(3)">← Knowledge Check</button>
+      <button class="nav-btn primary" onclick="completedDay()">✓ Mark Day 1 Complete</button>
+    </div>
+  </div>
+
+</main>
+</div>
+
+<script>
+let current = 0;
+const total = 5;
+const quizAnswers = { 0: null, 1: null, 2: null, 3: null, 4: null };
+const correctAnswers = { 0: 1, 1: 2, 2: 1, 3: 2, 4: 3 };
+let quizSubmitted = { 0:false,1:false,2:false,3:false,4:false };
+
+function goTo(idx) {
+  document.querySelectorAll('.lesson-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('panel'+idx).classList.add('active');
+  document.getElementById('nav'+idx).classList.add('active');
+  current = idx;
+  document.getElementById('lessonCount').textContent = (idx+1)+' / '+total;
+  const pct = Math.round(((idx+1)/total)*100);
+  document.getElementById('progressFill').style.width = pct+'%';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+  // mark previous as done
+  for(let i=0;i<idx;i++){
+    document.getElementById('nav'+i).classList.add('done');
+  }
+}
+
+function answer(qIdx, optIdx, correctOpt) {
+  if(quizSubmitted[qIdx]) return;
+  quizSubmitted[qIdx] = true;
+  const qEl = document.getElementById('q'+qIdx);
+  const opts = qEl.querySelectorAll('.quiz-opt');
+  opts.forEach(o => o.disabled = true);
+  if(optIdx === correctOpt) {
+    opts[optIdx].classList.add('correct');
+    document.getElementById('qf'+qIdx+'-correct').style.display = 'block';
+    quizAnswers[qIdx] = true;
+  } else {
+    opts[optIdx].classList.add('wrong');
+    opts[correctOpt].classList.add('correct');
+    document.getElementById('qf'+qIdx+'-wrong').style.display = 'block';
+    quizAnswers[qIdx] = false;
+  }
+  // check if all answered
+  const allDone = Object.values(quizSubmitted).every(v => v === true);
+  if(allDone) showScore();
+}
+
+function showScore() {
+  const score = Object.values(quizAnswers).filter(v => v === true).length;
+  const el = document.getElementById('quizScore');
+  el.style.display = 'block';
+  document.getElementById('scoreNum').textContent = score+'/5';
+  const msgs = {
+    5: '🏆 Perfect score. You have solid grasp of Day 1 fundamentals — head straight to the lab.',
+    4: '✅ Strong result. One gap to revisit — re-read the explanation for the question you missed, then do the lab.',
+    3: '📖 Good effort. Review Lessons 1–2 once more before the lab. Pay attention to component definitions.',
+    2: '🔄 Go back through the lessons once more — especially the architecture section. The concepts will click.',
+    1: '🔄 Start from Lesson 1 again. Read each section slowly before re-taking the quiz.',
+    0: '🔄 Take a break then re-read from Lesson 1. There is no rush — understanding beats speed.',
+  };
+  document.getElementById('scoreMsg').textContent = msgs[score] || msgs[0];
+}
+
+function toggleCheck(el) {
+  el.classList.toggle('checked');
+}
+
+function completedDay() {
+  alert('🎉 Day 1 Complete!\n\nHead to next session when you have:\n✓ Created your first incident\n✓ Explored the War Room\n✓ Noted what the !ip command returned\n\nSee you at Day 2 — Python Basics for XSOAR.');
+}
+</script>
+</body>
+</html>
